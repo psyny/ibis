@@ -1,0 +1,50 @@
+services:
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend-api
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    # Live code: edits under backend/ibis reload the API without rebuilding
+    volumes:
+      - ./backend/ibis:/app/ibis
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      PYTHONUNBUFFERED: 1
+      APP_ENV: development
+      DATABASE_URL: postgresql://ibis:ibis@postgres:5432/ibis
+      CORS_ORIGINS: http://localhost:3000
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ibis
+      POSTGRES_USER: ibis
+      POSTGRES_PASSWORD: ibis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres_data:

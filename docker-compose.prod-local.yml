@@ -1,0 +1,42 @@
+# Production-like build (nginx static frontend, production settings) on your machine.
+services:
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend-api
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      APP_ENV: production
+      DATABASE_URL: postgresql://ibis:ibis@postgres:5432/ibis
+      CORS_ORIGINS: http://localhost:8080
+      JWT_SECRET_KEY: local-production-test-secret-change-me
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ibis
+      POSTGRES_USER: ibis
+      POSTGRES_PASSWORD: ibis
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_prod_local_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_prod_local_data:

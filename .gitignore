@@ -1,0 +1,69 @@
+# ---------------------------------------------------------------------------
+# Secrets and local configuration (commit the *.env.example files instead)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------------------------------------------------------------------------
+# Python (backend)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+*.egg-info/
+.eggs/
+build/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local SQLite databases (tests / quick local runs; real data lives in Postgres)
+*.sqlite3
+*.sqlite
+*.db
+
+# ---------------------------------------------------------------------------
+# Node (frontend)
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Logs and local-only notes
+# ---------------------------------------------------------------------------
+*.log
+logs/
+notversioned/
+
+# AI assistant local state
+.claude/
