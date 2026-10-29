@@ -15,6 +15,11 @@
 
 The whole policy is in `backend/ibis/domain/roles.py` (`MIN_ROLE_ADD_COST`, `PARTICIPANT_ROLES`, ...).
 
+- **Shield costs from guests** (household option, Settings → General): guests then see only the costs
+  they paid, cover or added, only transfers they are part of, their own balance, and no category
+  breakdown. Totals and month counts only include those costs, and other costs can't be opened by link.
+  Their split is still computed from all costs, so their amounts are correct. Enforced in the API
+  (`HouseholdContext.is_shielded`), not just hidden in the screen.
 - People lists are ordered **residents (incl. managers) A–Z, then guests A–Z** (viewers last).
 - **Disabled** members can't sign in or be picked for new costs, but stay in old costs, balances
   and statistics. A household always keeps at least one active manager.

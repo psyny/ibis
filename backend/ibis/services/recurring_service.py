@@ -35,13 +35,12 @@ class RecurringCostService:
         self.catalog = CatalogService(db)
 
     def list_items(self, ctx: HouseholdContext) -> list[RecurringCost]:
-        return list(
-            self.db.scalars(
-                select(RecurringCost)
-                .where(RecurringCost.household_id == ctx.household.id)
-                .order_by(RecurringCost.day_of_month, func.lower(RecurringCost.description))
-            ).unique()
-        )
+        items = self.db.scalars(
+            select(RecurringCost)
+            .where(RecurringCost.household_id == ctx.household.id)
+            .order_by(RecurringCost.day_of_month, func.lower(RecurringCost.description))
+        ).unique()
+        return [item for item in items if ctx.can_see(item)]
 
     def get(self, ctx: HouseholdContext, item_id: uuid.UUID) -> RecurringCost:
         item = self.db.get(RecurringCost, item_id)

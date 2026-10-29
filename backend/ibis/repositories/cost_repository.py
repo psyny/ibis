@@ -34,6 +34,9 @@ class CostRepository:
             ).unique()
         )
 
+    def list_for_household(self, household_id: uuid.UUID) -> list[Cost]:
+        return list(self.db.scalars(select(Cost).where(Cost.household_id == household_id)).unique())
+
     def stats_by_month(self, household_id: uuid.UUID) -> dict[uuid.UUID, tuple[int, Decimal]]:
         rows = self.db.execute(
             select(Cost.month_id, func.count(Cost.id), func.coalesce(func.sum(Cost.amount), 0))

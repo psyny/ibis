@@ -21,7 +21,7 @@ const base = (householdId: string) => `/api/households/${householdId}`;
 export const getHousehold = (hid: string) => request<Household>(base(hid));
 export const updateHousehold = (
   hid: string,
-  data: { name?: string; currency?: string; timezone?: string; auto_close_days?: number | null; disable_auto_close?: boolean },
+  data: { name?: string; currency?: string; timezone?: string; auto_close_days?: number | null; disable_auto_close?: boolean; shield_costs_from_guests?: boolean },
 ) => request<Household>(base(hid), { method: 'PUT', body: data });
 
 // Members

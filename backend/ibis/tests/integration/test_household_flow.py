@@ -118,6 +118,50 @@ def test_cost_list_is_oldest_first(client, admin, login):
         assert descriptions == ["Oldest", "Middle", "Same day, added later"]
 
 
+def test_shield_costs_from_guests(client, admin, login):
+    hid, people = _setup_household(client, admin, login)
+    mia, gil = people["mia"]["headers"], people["gil"]["headers"]
+    gil_id = people["gil"]["member"]["id"]
+    food = client.post(f"/api/households/{hid}/categories", json={"name": "Food"}, headers=mia).json()
+
+    # Mia pays 90 for Mia+Rui (doesn't involve Gil); Rui pays 30 for Gil
+    private = _cost(people, "mia", ["mia", "rui"], 90, description="Rent share")
+    private["category_id"] = food["id"]
+    private_id = client.post(f"/api/households/{hid}/costs", json=private, headers=mia).json()["id"]
+    client.post(f"/api/households/{hid}/costs", json=_cost(people, "rui", ["gil"], 30, description="Gil's lunch"), headers=mia)
+
+    # Option off: the guest sees everything
+    summary = _summary(client, hid, gil)
+    assert summary["restricted"] is False and len(summary["costs"]) == 2 and summary["category_totals"]
+
+    assert client.put(f"/api/households/{hid}", json={"shield_costs_from_guests": True}, headers=people["rui"]["headers"]).status_code == 403
+    assert client.put(f"/api/households/{hid}", json={"shield_costs_from_guests": True}, headers=mia).json()["shield_costs_from_guests"] is True
+
+    # Guest view: only what involves Gil
+    summary = _summary(client, hid, gil)
+    assert summary["restricted"] is True
+    assert [c["description"] for c in summary["costs"]] == ["Gil's lunch"]
+    assert summary["category_totals"] == []
+    assert summary["total"] == 30
+    assert [b["member_id"] for b in summary["balances"]] == [gil_id]
+    assert summary["balances"][0]["net"] == -30  # still computed from all costs
+    assert all(gil_id in (t["from_member_id"], t["to_member_id"]) for t in summary["transfers"])
+    # No side doors: month totals, the cost itself by id
+    today = today_in("UTC")
+    month = next(m for m in client.get(f"/api/households/{hid}/months", headers=gil).json() if (m["year"], m["month"]) == (today.year, today.month))
+    assert (month["cost_count"], month["total"]) == (1, 30)
+    assert client.get(f"/api/households/{hid}/costs/{private_id}", headers=gil).status_code == 404
+
+    # A cost the guest adds themselves (even for others) is visible to them
+    client.post(f"/api/households/{hid}/costs", json=_cost(people, "mia", ["mia"], 12, description="Bought for Mia"), headers=gil)
+    assert "Bought for Mia" in [c["description"] for c in _summary(client, hid, gil)["costs"]]
+
+    # Residents, managers and viewers are not affected
+    for who in ("rui", "mia", "val"):
+        summary = _summary(client, hid, people[who]["headers"])
+        assert summary["restricted"] is False and len(summary["costs"]) == 3
+
+
 def test_closed_month_rejects_changes(client, admin, login):
     hid, people = _setup_household(client, admin, login)
     mia, rui = people["mia"]["headers"], people["rui"]["headers"]

@@ -65,7 +65,15 @@ class MonthService:
         return found
 
     def list_months(self, ctx: HouseholdContext) -> list[MonthRead]:
-        stats = self.costs.stats_by_month(ctx.household.id)
+        if ctx.is_shielded:
+            # Shielded guests: counts and totals only include costs that involve them
+            stats: dict = {}
+            for cost in self.costs.list_for_household(ctx.household.id):
+                if ctx.involves_me(cost):
+                    count, total = stats.get(cost.month_id, (0, 0))
+                    stats[cost.month_id] = (count + 1, total + cost.amount)
+        else:
+            stats = self.costs.stats_by_month(ctx.household.id)
         return [self.to_read(ctx.household, m, stats.get(m.id)) for m in self.months.list_for_household(ctx.household.id)]
 
     def create(self, ctx: HouseholdContext, year: int, month: int) -> HouseholdMonth:

@@ -31,7 +31,7 @@ class CostService:
 
     def get(self, ctx: HouseholdContext, cost_id: uuid.UUID) -> Cost:
         cost = self.costs.get(ctx.household.id, cost_id)
-        if cost is None:
+        if cost is None or not ctx.can_see(cost):  # shielded guests only reach costs that involve them
             raise NotFoundError("Cost not found")
         return cost
 

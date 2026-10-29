@@ -29,12 +29,16 @@ export function SplitCard({ summary, onPersonClick, onPayClick }: Props) {
           Split
         </h2>
         <span className="card__subtitle">
-          {summary.transfers.length === 1 ? '1 transfer' : `${summary.transfers.length} transfers`} settle everything
+          {summary.restricted
+            ? 'Your transfers'
+            : `${summary.transfers.length === 1 ? '1 transfer' : `${summary.transfers.length} transfers`} settle everything`}
         </span>
       </div>
 
       {summary.transfers.length === 0 ? (
-        <p className="muted">{summary.costs.length === 0 ? 'No costs yet this month.' : 'Everyone is even. 🎉'}</p>
+        <p className="muted">
+          {summary.costs.length === 0 ? 'No costs yet this month.' : summary.restricted ? "You're even. 🎉" : 'Everyone is even. 🎉'}
+        </p>
       ) : (
         <>
           <div className="split-list">

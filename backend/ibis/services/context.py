@@ -33,6 +33,27 @@ class HouseholdContext:
     def can_manage(self) -> bool:
         return has_role(self.role, MIN_ROLE_MANAGE)
 
+    @property
+    def is_shielded(self) -> bool:
+        """A guest in a household that shields costs from guests: sees only what involves them."""
+        return (
+            self.household.shield_costs_from_guests
+            and self.role == Role.GUEST
+            and not self.user.is_admin
+            and self.member is not None
+        )
+
+    def involves_me(self, cost) -> bool:
+        """True if the acting member paid, covers, or added this cost (or fixed cost)."""
+        if self.member is None:
+            return False
+        if getattr(cost, "created_by_user_id", None) == self.user.id:
+            return True
+        return any(m.id == self.member.id for m in [*cost.payers, *cost.coverers])
+
+    def can_see(self, cost) -> bool:
+        return not self.is_shielded or self.involves_me(cost)
+
     def require(self, minimum: Role) -> None:
         if not has_role(self.role, minimum):
             raise PermissionDeniedError(f"This action requires the '{minimum.value}' role")

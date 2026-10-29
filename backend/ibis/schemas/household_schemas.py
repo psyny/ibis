@@ -13,6 +13,7 @@ class HouseholdCreate(BaseModel):
     currency: str = Field("USD", min_length=3, max_length=3)
     timezone: str = Field("UTC", min_length=1, max_length=64)
     auto_close_days: Optional[int] = Field(None, ge=0, le=365)
+    shield_costs_from_guests: bool = False
 
 
 class HouseholdUpdate(BaseModel):
@@ -22,6 +23,7 @@ class HouseholdUpdate(BaseModel):
     auto_close_days: Optional[int] = Field(None, ge=0, le=365)
     # auto_close_days=None is ambiguous in a PATCH-like body; use this to turn it off.
     disable_auto_close: bool = False
+    shield_costs_from_guests: Optional[bool] = None
 
 
 class HouseholdPermissions(BaseModel):
@@ -35,6 +37,7 @@ class HouseholdRead(BaseModel):
     currency: str
     timezone: str
     auto_close_days: Optional[int] = None
+    shield_costs_from_guests: bool = False
     today: date
     my_role: str
     my_member_id: Optional[uuid.UUID] = None

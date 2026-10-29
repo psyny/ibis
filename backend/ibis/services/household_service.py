@@ -37,6 +37,7 @@ class HouseholdService:
             currency=data.currency.upper(),
             timezone=data.timezone,
             auto_close_days=data.auto_close_days,
+            shield_costs_from_guests=data.shield_costs_from_guests,
         )
         self.db.add(household)
         self.db.commit()
@@ -57,6 +58,8 @@ class HouseholdService:
             household.auto_close_days = None
         elif data.auto_close_days is not None:
             household.auto_close_days = data.auto_close_days
+        if data.shield_costs_from_guests is not None:
+            household.shield_costs_from_guests = data.shield_costs_from_guests
         self.db.commit()
         self.db.refresh(household)
         return household
@@ -73,6 +76,7 @@ class HouseholdService:
             currency=household.currency,
             timezone=household.timezone,
             auto_close_days=household.auto_close_days,
+            shield_costs_from_guests=household.shield_costs_from_guests,
             today=today_in(household.timezone),
             my_role=ctx.role.value,
             my_member_id=ctx.member.id if ctx.member else None,

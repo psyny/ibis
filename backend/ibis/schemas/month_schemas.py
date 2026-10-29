@@ -57,3 +57,6 @@ class MonthSummary(BaseModel):
     costs: list[CostRead]
     can_add_cost: bool
     can_manage: bool
+    # True for a guest when the household shields costs from guests: the lists and totals
+    # only include what involves them and category totals are empty.
+    restricted: bool = False

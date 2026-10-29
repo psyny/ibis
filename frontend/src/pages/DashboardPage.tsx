@@ -195,22 +195,28 @@ export function DashboardPage() {
                 </p>
               )}
 
+              {summary.restricted && (
+                <p className="muted small">This household shows guests only the costs and transfers that involve them.</p>
+              )}
+
               <SplitCard summary={summary} onPersonClick={setContactId} onPayClick={setPaying} />
 
-              <section className="card" aria-labelledby="categories-title">
-                <div className="card__header">
-                  <h2 className="card__title" id="categories-title">
-                    By category
-                  </h2>
-                  <span className="card__subtitle num">{formatMoney(summary.total, summary.currency)}</span>
-                </div>
-                <CategoryChart totals={summary.category_totals} total={summary.total} currency={summary.currency} />
-              </section>
+              {!summary.restricted && (
+                <section className="card" aria-labelledby="categories-title">
+                  <div className="card__header">
+                    <h2 className="card__title" id="categories-title">
+                      By category
+                    </h2>
+                    <span className="card__subtitle num">{formatMoney(summary.total, summary.currency)}</span>
+                  </div>
+                  <CategoryChart totals={summary.category_totals} total={summary.total} currency={summary.currency} />
+                </section>
+              )}
 
               <section className="card" aria-labelledby="costs-title">
                 <div className="card__header">
                   <h2 className="card__title" id="costs-title">
-                    Costs
+                    {summary.restricted ? 'My costs' : 'Costs'}
                   </h2>
                   <span className="card__subtitle">
                     {summary.costs.length} · {formatMoney(summary.total, summary.currency)}

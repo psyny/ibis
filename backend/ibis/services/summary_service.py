@@ -72,6 +72,16 @@ class SummaryService:
             key=lambda c: -c.total,
         )
 
+        # Shielded guests: the split above is still computed from ALL costs (so their numbers are
+        # right), but they only get what involves them, and no category breakdown.
+        restricted = ctx.is_shielded
+        if restricted:
+            me = ctx.member.id
+            costs = [cost for cost in costs if ctx.involves_me(cost)]
+            balances = [b for b in balances if b.member_id == me]
+            transfers = [t for t in transfers if me in (t.from_member_id, t.to_member_id)]
+            category_totals = []
+
         stats = (len(costs), sum((cost.amount for cost in costs), start=0))
         return MonthSummary(
             month=self.months.to_read(household, month_row, stats),
@@ -85,4 +95,5 @@ class SummaryService:
             costs=[self.cost_service.to_read(ctx, cost, month_row.is_open) for cost in costs],
             can_add_cost=ctx.can_add_cost and month_row.is_open,
             can_manage=ctx.can_manage,
+            restricted=restricted,
         )

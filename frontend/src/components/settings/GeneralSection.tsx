@@ -14,6 +14,7 @@ export function GeneralSection({ household, onSaved }: Props) {
   const [timezone, setTimezone] = useState(household.timezone);
   const [autoClose, setAutoClose] = useState(household.auto_close_days !== null);
   const [days, setDays] = useState(String(household.auto_close_days ?? 5));
+  const [shield, setShield] = useState(household.shield_costs_from_guests);
   const [saving, setSaving] = useState(false);
   const showMessage = useMessage();
 
@@ -30,6 +31,7 @@ export function GeneralSection({ household, onSaved }: Props) {
         name,
         currency: currency.toUpperCase(),
         timezone,
+        shield_costs_from_guests: shield,
         ...(autoClose ? { auto_close_days: Math.max(0, Number(days) || 0) } : { disable_auto_close: true }),
       });
       showMessage('success', 'Settings saved');
@@ -100,6 +102,16 @@ export function GeneralSection({ household, onSaved }: Props) {
             <span className="muted">days after the month ends</span>
           </div>
         )}
+      </div>
+      <div className="form-field">
+        <span className="form-label">Privacy</span>
+        <label className="checkbox">
+          <input type="checkbox" checked={shield} onChange={(e) => setShield(e.target.checked)} />
+          Shield costs from guests
+        </label>
+        <span className="form-hint">
+          Guests only see the costs and transfers that involve them, their own totals, and no breakdown by category.
+        </span>
       </div>
       <button className="button button--primary" disabled={saving}>
         {saving ? 'Saving...' : 'Save'}

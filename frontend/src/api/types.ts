@@ -36,6 +36,7 @@ export interface Household {
   currency: string;
   timezone: string;
   auto_close_days: number | null;
+  shield_costs_from_guests: boolean;
   today: string;
   my_role: Role;
   my_member_id: string | null;
@@ -168,6 +169,8 @@ export interface MonthSummary {
   costs: Cost[];
   can_add_cost: boolean;
   can_manage: boolean;
+  /** Guest in a household that shields costs: only what involves them, no category totals */
+  restricted: boolean;
 }
 
 export interface AdminHousehold {
