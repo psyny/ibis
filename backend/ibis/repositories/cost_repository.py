@@ -25,9 +25,12 @@ class CostRepository:
         return cost
 
     def list_for_month(self, month_id: uuid.UUID) -> list[Cost]:
+        """Oldest first: by date, then by when it was added."""
         return list(
             self.db.scalars(
-                select(Cost).where(Cost.month_id == month_id).order_by(Cost.date.desc(), Cost.created_at.desc())
+                select(Cost)
+                .where(Cost.month_id == month_id)
+                .order_by(Cost.date.asc(), Cost.created_at.asc(), Cost.id.asc())
             ).unique()
         )
 

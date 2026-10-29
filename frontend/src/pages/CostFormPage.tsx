@@ -88,10 +88,11 @@ export function CostFormPage() {
   }, [members, existing]);
 
   const visibleCategories = categories.filter((c) => !c.is_archived || c.id === existing?.category_id);
-  const matchingPresets = useMemo(() => {
+  // Presets still worth suggesting for what was typed (all of them when the description is empty)
+  const matchingPresetIds = useMemo(() => {
     const text = description.trim().toLowerCase();
     const list = text ? presets.filter((p) => p.name.toLowerCase().includes(text) && p.name.toLowerCase() !== text) : presets;
-    return list.slice(0, 12);
+    return new Set(list.map((p) => p.id));
   }, [presets, description]);
 
   const amount = parseAmount(amountText);
@@ -189,7 +190,7 @@ export function CostFormPage() {
   if (!household.permissions.can_add_cost) {
     return shell(
       <div className="card state-message">
-        Only residents and managers can add costs.
+        Viewers can't add costs. Ask a manager if you need to.
         <div style={{ marginTop: 16 }}>
           <Link to={`/h/${householdId}`} className="button button--secondary">
             Back to monthly costs
@@ -242,13 +243,24 @@ export function CostFormPage() {
               maxLength={200}
               autoComplete="off"
             />
-            {matchingPresets.length > 0 && (
+            {presets.length > 0 && (
+              // Non-matching presets are hidden but keep their space, so the card doesn't jump while typing
               <div className="chips" style={{ marginTop: 6 }}>
-                {matchingPresets.map((p) => (
-                  <button type="button" key={p.id} className="chip chip--small" onClick={() => applyPreset(p)}>
-                    {p.name}
-                  </button>
-                ))}
+                {presets.map((p) => {
+                  const shown = matchingPresetIds.has(p.id);
+                  return (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className={`chip chip--small ${shown ? '' : 'chip--hidden'}`}
+                      onClick={shown ? () => applyPreset(p) : undefined}
+                      tabIndex={shown ? undefined : -1}
+                      aria-hidden={shown ? undefined : true}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -298,11 +310,14 @@ export function CostFormPage() {
         </section>
 
         <section className="card" style={{ marginTop: 16 }}>
-          <div className="form-field">
+          <div className="form-field" style={{ marginBottom: 0 }}>
             <span className="form-label">Who paid</span>
             <PersonChips members={selectable} selected={payers} onChange={setPayers} label="Who paid" />
             {payers.length > 1 && <span className="form-hint">Each paid an equal part.</span>}
           </div>
+        </section>
+
+        <section className="card" style={{ marginTop: 16 }}>
           <div className="form-field" style={{ marginBottom: 0 }}>
             <span className="form-label">Who covers</span>
             <PersonChips members={selectable} selected={coverers} onChange={setCoverers} label="Who covers" shortcuts />
@@ -321,31 +336,30 @@ export function CostFormPage() {
           </p>
         )}
 
+        {/* Right after the last card: two buttons, half the card width each */}
+        <div className="form-actions-split">
+          {isEdit ? (
+            <Link to={backUrl()} className="button button--secondary button--large">
+              Cancel
+            </Link>
+          ) : (
+            <button type="button" className="button button--secondary button--large" onClick={() => save(true)} disabled={saving}>
+              Save & add another
+            </button>
+          )}
+          <button type="submit" className="button button--primary button--large" disabled={saving}>
+            {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Save cost'}
+          </button>
+        </div>
+
         {isEdit && (
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
             <button type="button" className="button button--danger" onClick={remove}>
               Delete cost
             </button>
           </div>
         )}
       </form>
-
-      <div className="bottom-bar">
-        {!isEdit && (
-          <button
-            type="button"
-            className="button button--secondary button--large"
-            style={{ maxWidth: 200 }}
-            onClick={() => save(true)}
-            disabled={saving}
-          >
-            Save & add another
-          </button>
-        )}
-        <button type="submit" form="cost-form" className="button button--primary button--large" disabled={saving}>
-          {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Save cost'}
-        </button>
-      </div>
     </>,
   );
 }

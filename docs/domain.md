@@ -9,15 +9,11 @@
 | Role | Can |
 |------|-----|
 | Manager | Everything: members, roles, categories, descriptions, starting state, months (create/close/reopen), edit/delete any cost |
-| Resident | Add costs; edit/delete costs they added |
-| Guest | Take part in costs (can be "who paid" / "who covers"); view |
+| Resident | Same as guest for now (kept separate for future rules) |
+| Guest | Add costs; edit/delete costs they added; take part in costs ("who paid" / "who covers") |
 | Viewer | View only; not part of costs |
 
 The whole policy is in `backend/ibis/domain/roles.py` (`MIN_ROLE_ADD_COST`, `PARTICIPANT_ROLES`, ...).
-
-> Note: the original brief says guests and residents have the same rights for now, but also
-> that only residents/managers add costs. Ibis follows the second rule: guests can be on a cost
-> but can't add one. Change `MIN_ROLE_ADD_COST` to `Role.GUEST` to let guests add costs.
 
 - People lists are ordered **residents (incl. managers) A–Z, then guests A–Z** (viewers last).
 - **Disabled** members can't sign in or be picked for new costs, but stay in old costs, balances

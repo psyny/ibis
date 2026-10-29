@@ -244,6 +244,27 @@
   color: var(--text-primary);
 }
 
+/* Hidden but still taking its space (keeps the layout from jumping) */
+.chip--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Two side-by-side form buttons, half the width each */
+.form-actions-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.form-actions-split > .button {
+  width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+
 .chip--small {
   min-height: 32px;
   padding: 4px 12px;

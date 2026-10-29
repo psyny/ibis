@@ -23,7 +23,7 @@ def has_role(role: Role | str, minimum: Role | str) -> bool:
 
 # --- Permission policy -------------------------------------------------------
 MIN_ROLE_VIEW = Role.VIEWER
-MIN_ROLE_ADD_COST = Role.RESIDENT
+MIN_ROLE_ADD_COST = Role.GUEST  # guests, residents and managers add costs (and edit/delete their own)
 MIN_ROLE_MANAGE = Role.MANAGER
 
 # Roles that can appear as "who paid" / "who covers" on a cost.

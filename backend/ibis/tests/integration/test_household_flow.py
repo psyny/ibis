@@ -63,7 +63,9 @@ def test_role_permissions_for_adding_costs(client, admin, login):
     hid, people = _setup_household(client, admin, login)
     body = _cost(people, "rui", ["rui", "mia"], 100)
     assert client.post(f"/api/households/{hid}/costs", json=body, headers=people["val"]["headers"]).status_code == 403
-    assert client.post(f"/api/households/{hid}/costs", json=body, headers=people["gil"]["headers"]).status_code == 403
+    guest_cost = client.post(f"/api/households/{hid}/costs", json=body, headers=people["gil"]["headers"])
+    assert guest_cost.status_code == 201  # guests add costs too
+    assert guest_cost.json()["can_edit"] is True  # ...and can edit their own
     assert client.post(f"/api/households/{hid}/costs", json=body, headers=people["rui"]["headers"]).status_code == 201
     assert client.post(f"/api/households/{hid}/costs", json=body, headers=people["mia"]["headers"]).status_code == 201
     # Viewers can't be part of a cost
@@ -99,6 +101,21 @@ def test_summary_split_and_categories(client, admin, login):
     first = next(c for c in summary["costs"] if c["amount"] == 90)
     assert first["cover_share"] == 30
     assert summary["can_add_cost"] is False  # viewer
+
+
+def test_cost_list_is_oldest_first(client, admin, login):
+    hid, people = _setup_household(client, admin, login)
+    mia = people["mia"]["headers"]
+    today = today_in("UTC")
+    first_day = today.replace(day=1)
+    # Added out of order on purpose
+    for description, day in [("Middle", today), ("Oldest", first_day), ("Same day, added later", today)]:
+        client.post(f"/api/households/{hid}/costs", json=_cost(people, "mia", ["mia"], 10, day=day, description=description), headers=mia)
+    descriptions = [c["description"] for c in _summary(client, hid, mia)["costs"]]
+    if first_day == today:  # on the 1st all three share a date: order is the order they were added
+        assert descriptions == ["Middle", "Oldest", "Same day, added later"]
+    else:
+        assert descriptions == ["Oldest", "Middle", "Same day, added later"]
 
 
 def test_closed_month_rejects_changes(client, admin, login):
