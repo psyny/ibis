@@ -492,6 +492,59 @@
   border-color: var(--accent);
 }
 
+/* ---------- Tools ---------- */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 120px;
+  color: var(--text-primary);
+  text-decoration: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tool-card:hover {
+  border-color: var(--accent);
+  background: var(--card-bg-hover);
+}
+
+.tool-card__icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.tool-card__title {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.tool-card__description {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Three per row everywhere; on narrow phones keep the cards compact */
+@media (max-width: 520px) {
+  .tool-card {
+    padding: 12px;
+    min-height: 104px;
+  }
+  .tool-card__title {
+    font-size: 13px;
+  }
+  .tool-card__description {
+    display: none;
+  }
+}
+
 /* ---------- Pay sheet ---------- */
 .pay-amount {
   font-size: 30px;

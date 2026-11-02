@@ -8,7 +8,9 @@ import { CostFormPage } from './pages/CostFormPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomeRedirect } from './pages/HomeRedirect';
 import { LoginPage } from './pages/LoginPage';
+import { PixGenPage } from './pages/PixGenPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ToolsPage } from './pages/ToolsPage';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
               <Route path="/h/:householdId/costs/:costId" element={<CostFormPage />} />
               <Route path="/h/:householdId/settings" element={<SettingsPage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/tools" element={<ToolsPage />} />
+              <Route path="/tools/pixgen" element={<PixGenPage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,6 +5,7 @@ import { applyRecurring, closeMonth, createMonth, deleteCost, getMonthSummary, r
 import type { Cost, MonthSummary, Transfer } from '../api/types';
 import { CategoryChart } from '../components/CategoryChart';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { memberAsReceiver } from '../components/pixReceivers';
 import { PixPayModal } from '../components/PixPayModal';
 import { CostList } from '../components/CostList';
 import { MemberContactModal } from '../components/MemberContactModal';
@@ -278,9 +279,10 @@ export function DashboardPage() {
       )}
       {paying && summary && householdId && summary.members.some((m) => m.id === paying.to_member_id) && (
         <PixPayModal
-          householdId={householdId}
-          payerName={summary.members.find((m) => m.id === paying.from_member_id)?.display_name || ''}
-          receiver={summary.members.find((m) => m.id === paying.to_member_id)!}
+          receiver={memberAsReceiver(householdId, summary.members.find((m) => m.id === paying.to_member_id)!)}
+          subtitle={`${summary.members.find((m) => m.id === paying.from_member_id)?.display_name || ''} pays ${
+            summary.members.find((m) => m.id === paying.to_member_id)?.display_name || ''
+          }`}
           amount={paying.amount}
           currency={summary.currency}
           onClose={() => setPaying(null)}

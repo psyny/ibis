@@ -65,6 +65,9 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
             <button className="menu__item" onClick={() => go('/account')}>
               My account
             </button>
+            <button className="menu__item" onClick={() => go('/tools')}>
+              Tools
+            </button>
             {me?.is_admin && (
               <button className="menu__item" onClick={() => go('/admin')}>
                 Admin

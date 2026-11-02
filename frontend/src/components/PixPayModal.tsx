@@ -1,48 +1,62 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PixSVG } from 'react-qrcode-pix';
-import { getMember } from '../api/households';
-import type { Member } from '../api/types';
+import type { BankInfoType } from '../api/types';
 import { useMessage } from '../contexts/MessageContext';
 import { formatMoney } from '../utils/format';
 import { buildPix } from '../utils/pix';
 import { Modal } from './Modal';
 
+/** Who gets the money. Works for a household member or for the signed-in user. */
+export interface PixReceiver {
+  name: string;
+  bankInfoType: BankInfoType;
+  bankInfo: string | null;
+  /** Uploaded payment QR image, if already at hand */
+  uploadedQr?: string | null;
+  /** Or a way to fetch it, used only when no PIX code can be generated */
+  loadUploadedQr?: () => Promise<string | null>;
+}
+
 interface Props {
-  householdId: string;
-  payerName: string;
-  receiver: Member;
+  receiver: PixReceiver;
   amount: number;
   currency: string;
+  /** Line under the amount, e.g. "Carla pays Ana" */
+  subtitle?: string;
   onClose: () => void;
 }
 
 /**
  * "Pay X" sheet: a PIX QR code (and copia-e-cola code) with the exact amount when the
  * receiver has a PIX key; otherwise their bank info and uploaded QR image.
+ * Used by the split table and by the PIX code generator tool.
  */
-export function PixPayModal({ householdId, payerName, receiver, amount, currency, onClose }: Props) {
+export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: Props) {
   const showMessage = useMessage();
-  const [uploadedQr, setUploadedQr] = useState<string | null>(null);
+  const [uploadedQr, setUploadedQr] = useState<string | null>(receiver.uploadedQr ?? null);
 
-  const hasPixKey = receiver.bank_info_type === 'pix' && !!receiver.bank_info;
+  const hasPixKey = receiver.bankInfoType === 'pix' && !!receiver.bankInfo;
   const isBRL = currency.toUpperCase() === 'BRL';
 
   const pix = useMemo(() => {
     if (!hasPixKey || !isBRL) return null;
     try {
-      return { data: buildPix(receiver.bank_info!, receiver.display_name, amount), error: '' };
+      return { data: buildPix(receiver.bankInfo!, receiver.name, amount), error: '' };
     } catch (e) {
       return { data: null, error: (e as Error).message };
     }
-  }, [hasPixKey, isBRL, receiver.bank_info, receiver.display_name, amount]);
+  }, [hasPixKey, isBRL, receiver.bankInfo, receiver.name, amount]);
 
   // Fall back to the image the person uploaded when we can't generate a PIX code
+  const { loadUploadedQr } = receiver;
+  const triedLoading = useRef(false);
   useEffect(() => {
-    if (pix?.data || !receiver.has_transfer_qr) return;
-    getMember(householdId, receiver.id)
-      .then((m) => setUploadedQr(m.transfer_qr))
+    if (pix?.data || uploadedQr || !loadUploadedQr || triedLoading.current) return;
+    triedLoading.current = true;
+    loadUploadedQr()
+      .then(setUploadedQr)
       .catch(() => setUploadedQr(null));
-  }, [pix, householdId, receiver.id, receiver.has_transfer_qr]);
+  }, [pix, uploadedQr, loadUploadedQr]);
 
   const copy = async (text: string, label: string) => {
     try {
@@ -54,11 +68,13 @@ export function PixPayModal({ householdId, payerName, receiver, amount, currency
   };
 
   return (
-    <Modal title={`Pay ${receiver.display_name}`} onClose={onClose}>
+    <Modal title={`Pay ${receiver.name}`} onClose={onClose}>
       <p className="pay-amount num">{formatMoney(amount, currency)}</p>
-      <p className="muted small" style={{ textAlign: 'center', marginBottom: 12 }}>
-        {payerName} pays {receiver.display_name}
-      </p>
+      {subtitle && (
+        <p className="muted small" style={{ textAlign: 'center', marginBottom: 12 }}>
+          {subtitle}
+        </p>
+      )}
 
       {pix?.data && (
         <>
@@ -99,23 +115,23 @@ export function PixPayModal({ householdId, payerName, receiver, amount, currency
           {hasPixKey && !isBRL && (
             <div className="banner">PIX QR codes need the household currency to be BRL. Here is the key:</div>
           )}
-          {receiver.bank_info ? (
+          {receiver.bankInfo ? (
             <div className="contact-row">
               <div className="grow">
-                <div className="contact-row__label">{receiver.bank_info_type === 'pix' ? 'PIX key' : 'Bank info'}</div>
-                <div className="contact-row__value">{receiver.bank_info}</div>
+                <div className="contact-row__label">{receiver.bankInfoType === 'pix' ? 'PIX key' : 'Bank info'}</div>
+                <div className="contact-row__value">{receiver.bankInfo}</div>
               </div>
-              <button className="button button--secondary button--small" onClick={() => copy(receiver.bank_info!, 'Bank info')}>
+              <button className="button button--secondary button--small" onClick={() => copy(receiver.bankInfo!, 'Bank info')}>
                 Copy
               </button>
             </div>
           ) : (
-            !uploadedQr && <p className="muted">{receiver.display_name} hasn't added bank info yet.</p>
+            !uploadedQr && <p className="muted">{receiver.name} hasn't added bank info yet.</p>
           )}
           {uploadedQr && (
             <div>
-              <div className="contact-row__label">QR code from {receiver.display_name}</div>
-              <img className="qr-image" src={uploadedQr} alt={`Payment QR code of ${receiver.display_name}`} />
+              <div className="contact-row__label">QR code from {receiver.name}</div>
+              <img className="qr-image" src={uploadedQr} alt={`Payment QR code of ${receiver.name}`} />
             </div>
           )}
         </div>
