@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/config';
-import { applyRecurring, closeMonth, createMonth, deleteCost, getMonthSummary, reopenMonth } from '../api/households';
+import { applyRecurring, closeMonth, createMonth, deleteCost, getMonthSummary, listMonths, reopenMonth } from '../api/households';
 import type { Cost, MonthSummary, Transfer } from '../api/types';
 import { CategoryChart } from '../components/CategoryChart';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -15,7 +15,7 @@ import { SplitCard } from '../components/SplitCard';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
-import { formatMoney, monthKey, monthLabel, parseMonthKey, shiftMonth } from '../utils/format';
+import { formatMoney, monthKey, monthLabel, monthOfDate, parseMonthKey, shiftMonth } from '../utils/format';
 
 export function DashboardPage() {
   const { householdId } = useParams();
@@ -31,12 +31,35 @@ export function DashboardPage() {
   const [confirmClose, setConfirmClose] = useState(false);
   const showMessage = useMessage();
 
-  // The current month (in the household's timezone) unless ?m=YYYY-MM says otherwise
+  // Which month to show: ?m=YYYY-MM if given, otherwise the default month: last month while it is
+  // still open (month transitions), else the current month (in the household's timezone).
   const today = household?.today;
   const fromUrl = parseMonthKey(params.get('m'));
-  const current = today ? { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) } : null;
-  const selected = fromUrl || current;
-  const isCurrentMonth = !!selected && !!current && selected.year === current.year && selected.month === current.month;
+  const current = today ? monthOfDate(today) : null;
+  const [defaultMonth, setDefaultMonth] = useState<{ year: number; month: number } | null>(null);
+
+  useEffect(() => {
+    if (!householdId || !today) return;
+    const cur = monthOfDate(today);
+    const prev = shiftMonth(cur.year, cur.month, -1);
+    let cancelled = false;
+    listMonths(householdId)
+      .then((months) => {
+        const prevOpen = months.some((m) => m.year === prev.year && m.month === prev.month && m.status === 'open');
+        if (!cancelled) setDefaultMonth(prevOpen ? prev : cur);
+      })
+      .catch(() => !cancelled && setDefaultMonth(cur));
+    return () => {
+      cancelled = true;
+    };
+  }, [householdId, today]);
+
+  const sameMonth = (a: { year: number; month: number } | null, b: { year: number; month: number } | null) =>
+    !!a && !!b && a.year === b.year && a.month === b.month;
+  const selected = fromUrl || defaultMonth;
+  const isDefaultMonth = sameMonth(selected, defaultMonth);
+  const isCurrentMonth = sameMonth(selected, current);
+  const showingOpenLastMonth = !fromUrl && !!defaultMonth && !sameMonth(defaultMonth, current);
 
   const load = useCallback(async () => {
     if (!householdId || !selected) return;
@@ -57,8 +80,7 @@ export function DashboardPage() {
 
   const goToMonth = (year: number, month: number) => {
     setPickerOpen(false);
-    const isToday = current && current.year === year && current.month === month;
-    setParams(isToday ? {} : { m: monthKey(year, month) });
+    setParams(sameMonth({ year, month }, defaultMonth) ? {} : { m: monthKey(year, month) });
   };
 
   const handleCreateMonth = async () => {
@@ -113,7 +135,10 @@ export function DashboardPage() {
 
   const addUrl =
     householdId && selected
-      ? `/h/${householdId}/add${isCurrentMonth ? '' : `?date=${monthKey(selected.year, selected.month)}-01`}`
+      ? // The default month needs no date: the add screen picks the same default (open last month, else today)
+        `/h/${householdId}/add${
+          isDefaultMonth ? '' : `?date=${isCurrentMonth && today ? today : `${monthKey(selected.year, selected.month)}-01`}`
+        }`
       : '#';
 
   return (
@@ -175,8 +200,8 @@ export function DashboardPage() {
               )}
               {!isCurrentMonth && (
                 <div style={{ marginTop: 12 }}>
-                  <button className="button button--ghost" onClick={() => setParams({})}>
-                    Back to the current month
+                  <button className="button button--ghost" onClick={() => current && goToMonth(current.year, current.month)}>
+                    Go to the current month
                   </button>
                 </div>
               )}
@@ -189,6 +214,17 @@ export function DashboardPage() {
                 <div className="banner banner--warning">
                   {monthLabel(summary.month.year, summary.month.month)} is closed. Costs can't be added or changed.
                 </div>
+              )}
+              {showingOpenLastMonth && current && (
+                <p className="month-warning" role="status">
+                  <span aria-hidden>⚠</span>
+                  <span>
+                    {monthLabel(summary.month.year, summary.month.month)} isn't closed yet, so it's shown first.{' '}
+                    <button className="link-button" onClick={() => goToMonth(current.year, current.month)}>
+                      Go to {monthLabel(current.year, current.month)}
+                    </button>
+                  </span>
+                </p>
               )}
               {summary.month.status === 'open' && summary.month.auto_close_on && (
                 <p className="muted small">
