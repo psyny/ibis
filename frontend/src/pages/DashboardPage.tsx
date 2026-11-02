@@ -219,7 +219,7 @@ export function DashboardPage() {
                 <p className="month-warning" role="status">
                   <span aria-hidden>⚠</span>
                   <span>
-                    {monthLabel(summary.month.year, summary.month.month)} isn't closed yet, so it's shown first.{' '}
+                    Showing last month ({monthLabel(summary.month.year, summary.month.month)}) because it's not closed yet.{' '}
                     <button className="link-button" onClick={() => goToMonth(current.year, current.month)}>
                       Go to {monthLabel(current.year, current.month)}
                     </button>
