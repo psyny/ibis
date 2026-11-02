@@ -6,12 +6,14 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { TopBar } from '../components/TopBar';
 import { lastHousehold, useAuth } from '../contexts/AuthContext';
 import { useMessage } from '../contexts/MessageContext';
+import { useI18n } from '../i18n';
 import { resizeImage } from '../utils/image';
 
 /** The user's own account: contact and payment info shown to their household, and password. */
 export function AccountPage() {
   const { me, refresh } = useAuth();
   const showMessage = useMessage();
+  const { t } = useI18n();
   const [form, setForm] = useState({
     display_name: me?.display_name || '',
     email: me?.email || '',
@@ -39,7 +41,7 @@ export function AccountPage() {
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
-    const bankProblem = bankInfoError(bankType, form.bank_info);
+    const bankProblem = bankInfoError(t, bankType, form.bank_info);
     if (bankProblem) return showMessage('error', bankProblem);
     setSaving(true);
     const bank_info = normalizeBankInfo(bankType, form.bank_info);
@@ -52,7 +54,7 @@ export function AccountPage() {
         transfer_qr: qr || '',
       });
       await refresh();
-      showMessage('success', 'Account saved');
+      showMessage('success', t('account.saved'));
     } catch (err) {
       showMessage('error', (err as Error).message);
     } finally {
@@ -65,7 +67,7 @@ export function AccountPage() {
     try {
       await changePassword(passwords.current, passwords.next);
       setPasswords({ current: '', next: '' });
-      showMessage('success', 'Password changed. Other devices were signed out.');
+      showMessage('success', t('account.passwordChanged'));
     } catch (err) {
       showMessage('error', (err as Error).message);
     }
@@ -81,14 +83,14 @@ export function AccountPage() {
       <main className="page">
         <div className="page__inner page__inner--narrow">
           <div>
-            <h1 className="page-title">My account</h1>
-            <p className="page-description">Signed in as @{me?.login_name}. Your household sees this info so they can pay you.</p>
+            <h1 className="page-title">{t('menu.myAccount')}</h1>
+            <p className="page-description">{t('account.description', { login: me?.login_name || '' })}</p>
           </div>
 
           <form className="card" onSubmit={save}>
             <div className="form-field">
               <label className="form-label" htmlFor="a-name">
-                Name
+                {t('common.name')}
               </label>
               <input id="a-name" className="form-input" value={form.display_name} onChange={set('display_name')} required />
             </div>
@@ -102,49 +104,49 @@ export function AccountPage() {
             <div className="form-grid form-grid--2">
               <div className="form-field">
                 <label className="form-label" htmlFor="a-wa">
-                  WhatsApp
+                  {t('common.whatsapp')}
                 </label>
                 <input id="a-wa" type="tel" className="form-input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+55 11 99999-9999" />
               </div>
               <div className="form-field">
                 <label className="form-label" htmlFor="a-email">
-                  Email
+                  {t('common.email')}
                 </label>
                 <input id="a-email" type="email" className="form-input" value={form.email} onChange={set('email')} />
               </div>
             </div>
             <div className="form-field">
-              <span className="form-label">Transfer QR code</span>
+              <span className="form-label">{t('contact.qr')}</span>
               {qr ? (
-                <img src={qr} alt="Your transfer QR code" className="qr-image" style={{ margin: '4px 0 8px', maxWidth: 200 }} />
+                <img src={qr} alt={t('account.qrAlt')} className="qr-image" style={{ margin: '4px 0 8px', maxWidth: 200 }} />
               ) : (
-                <span className="form-hint">Optional. A screenshot of a payment QR code, shown when a PIX code can't be generated.</span>
+                <span className="form-hint">{t('account.qrHint')}</span>
               )}
               <div className="row">
                 <label className="button button--secondary button--small">
-                  {qr ? 'Replace image' : 'Upload image'}
+                  {qr ? t('account.replaceImage') : t('account.uploadImage')}
                   <input type="file" accept="image/*" onChange={pickQr} className="visually-hidden" />
                 </label>
                 {qr && (
                   <button type="button" className="button button--ghost button--small" onClick={() => setQr(null)}>
-                    Remove
+                    {t('common.remove')}
                   </button>
                 )}
               </div>
             </div>
             <button className="button button--primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
           </form>
 
           <form className="card" onSubmit={savePassword}>
             <h2 className="card__title" style={{ marginBottom: 14 }}>
-              Change password
+              {t('account.changePassword')}
             </h2>
             <div className="form-grid form-grid--2">
               <div className="form-field">
                 <label className="form-label" htmlFor="p-current">
-                  Current password
+                  {t('account.currentPassword')}
                 </label>
                 <input
                   id="p-current"
@@ -158,7 +160,7 @@ export function AccountPage() {
               </div>
               <div className="form-field">
                 <label className="form-label" htmlFor="p-next">
-                  New password
+                  {t('account.newPassword')}
                 </label>
                 <input
                   id="p-next"
@@ -173,41 +175,41 @@ export function AccountPage() {
               </div>
             </div>
             <p className="form-hint" style={{ marginBottom: 12 }}>
-              Changing your password signs you out on your other devices.
+              {t('account.passwordHint')}
             </p>
-            <button className="button button--secondary">Change password</button>
+            <button className="button button--secondary">{t('account.changePassword')}</button>
           </form>
 
           <section className="card">
             <h2 className="card__title" style={{ marginBottom: 6 }}>
-              Devices
+              {t('account.devices')}
             </h2>
             <p className="muted small" style={{ marginBottom: 12 }}>
-              You stay signed in as long as you open Ibis at least once every 90 days. Lost a phone? Sign out everywhere else.
+              {t('account.devicesHint')}
             </p>
             <button className="button button--danger" onClick={() => setConfirmSignOut(true)}>
-              Sign out all other devices
+              {t('account.signOutOthers')}
             </button>
           </section>
         </div>
       </main>
       {confirmSignOut && (
         <ConfirmModal
-          title="Sign out all other devices?"
-          confirmLabel="Sign them out"
+          title={t('account.signOutOthersConfirm')}
+          confirmLabel={t('account.signThemOut')}
           danger
           onClose={() => setConfirmSignOut(false)}
           onConfirm={async () => {
             try {
               await signOutEverywhere();
-              showMessage('success', 'Signed out on all other devices');
+              showMessage('success', t('account.signedOutOthers'));
             } catch (e) {
               showMessage('error', (e as Error).message);
               throw e;
             }
           }}
         >
-          Every phone and browser where you are signed in, except this one, will need to sign in again.
+          {t('account.signOutOthersBody')}
         </ConfirmModal>
       )}
     </>

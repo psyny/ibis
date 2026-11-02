@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { createRecurring, deleteRecurring, listCategories, listMembers, listRecurring, updateRecurring } from '../../api/households';
 import type { Category, Member, RecurringCost } from '../../api/types';
 import { useMessage } from '../../contexts/MessageContext';
+import { useI18n } from '../../i18n';
 import { formatMoney, parseAmount } from '../../utils/format';
 import { PersonChips } from '../PersonChips';
 
@@ -17,6 +18,7 @@ export function RecurringSection({ householdId, currency }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<RecurringCost | 'new' | null>(null);
   const showMessage = useMessage();
+  const { t } = useI18n();
 
   const load = useCallback(() => {
     Promise.all([listRecurring(householdId), listMembers(householdId), listCategories(householdId, true)])
@@ -33,7 +35,7 @@ export function RecurringSection({ householdId, currency }: Props) {
   const people = (ids: string[]) => ids.map((id) => names.get(id) || '?').join(', ');
 
   const remove = async (item: RecurringCost) => {
-    if (!window.confirm(`Remove ${item.description} from the fixed costs? Months that already have it keep it.`)) return;
+    if (!window.confirm(t('fixed.removeConfirm', { name: item.description }))) return;
     try {
       await deleteRecurring(householdId, item.id);
       load();
@@ -45,16 +47,15 @@ export function RecurringSection({ householdId, currency }: Props) {
   return (
     <section className="card">
       <div className="card__header">
-        <h2 className="card__title">Fixed costs</h2>
+        <h2 className="card__title">{t('settings.tab.fixedCosts')}</h2>
         {editing === null && (
           <button className="button button--primary button--small" onClick={() => setEditing('new')}>
-            Add fixed cost
+            {t('fixed.add')}
           </button>
         )}
       </div>
       <p className="muted small" style={{ marginBottom: 8 }}>
-        Fixed costs (rent, internet...) copied into every new month when it is created. To add them to a month that already exists,
-        use “Add fixed costs” in the month menu (calendar icon at the top). It never adds duplicates.
+        {t('fixed.hint')}
       </p>
 
       {editing !== null && (
@@ -70,27 +71,27 @@ export function RecurringSection({ householdId, currency }: Props) {
         />
       )}
 
-      {!items && <p className="muted">Loading...</p>}
-      {items?.length === 0 && editing === null && <p className="muted">No fixed costs yet.</p>}
+      {!items && <p className="muted">{t('common.loading')}</p>}
+      {items?.length === 0 && editing === null && <p className="muted">{t('fixed.empty')}</p>}
       <div className="list">
         {items?.map((item) => (
           <div key={item.id} className={`list-item ${item.is_active ? '' : 'list-item--disabled'}`}>
             <div className="list-item__main">
               <div className="list-item__title">
                 {item.description} · <span className="num">{formatMoney(item.amount, currency)}</span>
-                {!item.is_active && <span className="pill" style={{ marginLeft: 8 }}>Paused</span>}
+                {!item.is_active && <span className="pill" style={{ marginLeft: 8 }}>{t('fixed.paused')}</span>}
               </div>
               <div className="list-item__sub">
-                Day {item.day_of_month}
-                {item.category_name && ` · ${item.category_name}`} · Paid by {people(item.payer_ids)} · Covered by{' '}
-                {people(item.coverer_ids)}
+                {t('fixed.day', { day: item.day_of_month })}
+                {item.category_name && ` · ${item.category_name}`} · {t('fixed.paidBy', { names: people(item.payer_ids) })} ·{' '}
+                {t('fixed.coveredBy', { names: people(item.coverer_ids) })}
               </div>
             </div>
             <button className="button button--secondary button--small" onClick={() => setEditing(item)}>
-              Edit
+              {t('common.edit')}
             </button>
             <button className="button button--danger button--small" onClick={() => remove(item)}>
-              Remove
+              {t('common.remove')}
             </button>
           </div>
         ))}
@@ -117,6 +118,7 @@ function RecurringForm({ householdId, item, members, categories, onDone }: FormP
   const [coverers, setCoverers] = useState<string[]>(item?.coverer_ids || residents.map((m) => m.id));
   const [active, setActive] = useState(item?.is_active ?? true);
   const [error, setError] = useState('');
+  const { t } = useI18n();
 
   const keep = new Set([...(item?.payer_ids || []), ...(item?.coverer_ids || [])]);
   const selectable = members.filter((m) => m.is_participant && (m.is_active || keep.has(m.id)));
@@ -124,9 +126,9 @@ function RecurringForm({ householdId, item, members, categories, onDone }: FormP
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const value = parseAmount(amount);
-    if (!description.trim()) return setError('Enter a description');
-    if (!(value > 0)) return setError('Enter an amount greater than zero');
-    if (!payers.length || !coverers.length) return setError('Pick who pays and who covers');
+    if (!description.trim()) return setError(t('validation.description'));
+    if (!(value > 0)) return setError(t('validation.amountPositive'));
+    if (!payers.length || !coverers.length) return setError(t('validation.payersAndCoverers'));
     const body = {
       description: description.trim(),
       amount: value,
@@ -150,29 +152,29 @@ function RecurringForm({ householdId, item, members, categories, onDone }: FormP
       <div className="form-grid form-grid--3">
         <div className="form-field">
           <label className="form-label" htmlFor="r-desc">
-            Description
+            {t('cost.description')}
           </label>
           <input id="r-desc" className="form-input" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="r-amount">
-            Amount
+            {t('fixed.amount')}
           </label>
           <input id="r-amount" className="form-input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="r-day">
-            Day of month
+            {t('fixed.dayOfMonth')}
           </label>
           <input id="r-day" className="form-input" type="number" min={1} max={31} value={day} onChange={(e) => setDay(e.target.value)} />
         </div>
       </div>
       <div className="form-field">
         <label className="form-label" htmlFor="r-cat">
-          Category
+          {t('cost.category')}
         </label>
         <select id="r-cat" className="form-select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">No category</option>
+          <option value="">{t('categories.none')}</option>
           {categories
             .filter((c) => !c.is_archived || c.id === item?.category_id)
             .map((c) => (
@@ -183,22 +185,22 @@ function RecurringForm({ householdId, item, members, categories, onDone }: FormP
         </select>
       </div>
       <div className="form-field">
-        <span className="form-label">Who pays</span>
-        <PersonChips members={selectable} selected={payers} onChange={setPayers} label="Who pays" />
+        <span className="form-label">{t('fixed.whoPays')}</span>
+        <PersonChips members={selectable} selected={payers} onChange={setPayers} label={t('fixed.whoPays')} />
       </div>
       <div className="form-field">
-        <span className="form-label">Who covers</span>
-        <PersonChips members={selectable} selected={coverers} onChange={setCoverers} label="Who covers" shortcuts />
+        <span className="form-label">{t('cost.whoCovers')}</span>
+        <PersonChips members={selectable} selected={coverers} onChange={setCoverers} label={t('cost.whoCovers')} shortcuts />
       </div>
       <label className="checkbox" style={{ marginBottom: 12 }}>
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-        Active (copied into new months)
+        {t('fixed.active')}
       </label>
       {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
       <div className="row">
-        <button className="button button--primary">{item ? 'Save' : 'Add'}</button>
+        <button className="button button--primary">{item ? t('common.save') : t('common.add')}</button>
         <button type="button" className="button button--ghost" onClick={onDone}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>

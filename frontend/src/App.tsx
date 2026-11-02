@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './components/RequireAuth';
 import { AuthProvider } from './contexts/AuthContext';
 import { MessageProvider } from './contexts/MessageContext';
+import { I18nProvider } from './i18n';
 import { AccountPage } from './pages/AccountPage';
 import { AdminPage } from './pages/AdminPage';
 import { CostFormPage } from './pages/CostFormPage';
@@ -14,6 +15,7 @@ import { ToolsPage } from './pages/ToolsPage';
 
 function App() {
   return (
+    <I18nProvider>
     <AuthProvider>
       <MessageProvider>
         <BrowserRouter>
@@ -36,6 +38,7 @@ function App() {
         </BrowserRouter>
       </MessageProvider>
     </AuthProvider>
+    </I18nProvider>
   );
 }
 

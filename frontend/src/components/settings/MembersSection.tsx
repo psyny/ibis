@@ -3,7 +3,7 @@ import { createMember, listMembers, resetMemberPassword, updateMember } from '..
 import type { Member, Role } from '../../api/types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMessage } from '../../contexts/MessageContext';
-import { ROLE_LABELS } from '../../utils/format';
+import { MessageKey, useI18n } from '../../i18n';
 import { EditMemberModal } from './EditMemberModal';
 
 const ROLES: Role[] = ['manager', 'resident', 'guest', 'viewer'];
@@ -13,6 +13,7 @@ export function MembersSection({ householdId }: { householdId: string }) {
   const [editing, setEditing] = useState<Member | null>(null);
   const showMessage = useMessage();
   const { me } = useAuth();
+  const { t } = useI18n();
 
   const load = useCallback(() => {
     listMembers(householdId)
@@ -32,11 +33,11 @@ export function MembersSection({ householdId }: { householdId: string }) {
   };
 
   const resetPassword = async (member: Member) => {
-    const password = window.prompt(`New password for ${member.display_name} (min. 4 characters)`);
+    const password = window.prompt(t('members.newPasswordPrompt', { name: member.display_name }));
     if (!password) return;
     try {
       await resetMemberPassword(householdId, member.id, password);
-      showMessage('success', `Password changed for ${member.display_name}`);
+      showMessage('success', t('members.passwordChangedFor', { name: member.display_name }));
     } catch (e) {
       showMessage('error', (e as Error).message);
     }
@@ -46,23 +47,22 @@ export function MembersSection({ householdId }: { householdId: string }) {
     <>
       <section className="card">
         <h2 className="card__title" style={{ marginBottom: 6 }}>
-          Members
+          {t('settings.tab.members')}
         </h2>
         <p className="muted small" style={{ marginBottom: 8 }}>
-          Managers manage everything. Residents add costs. Guests take part in costs. Viewers only look. Disabled people can't sign
-          in but stay in the history.
+          {t('members.rolesHint')}
         </p>
-        {!members && <p className="muted">Loading...</p>}
+        {!members && <p className="muted">{t('common.loading')}</p>}
         <div className="list">
           {members?.map((m) => (
             <div key={m.id} className={`list-item ${m.is_active ? '' : 'list-item--disabled'}`}>
               <div className="list-item__main">
                 <div className="list-item__title">
-                  {m.display_name} {!m.is_active && <span className="pill">Disabled</span>}
+                  {m.display_name} {!m.is_active && <span className="pill">{t('common.disabled')}</span>}
                 </div>
                 <div className="list-item__sub">
                   @{m.login_name}
-                  {m.bank_info ? ` · ${m.bank_info_type === 'pix' ? 'PIX' : 'Bank'}: ${m.bank_info}` : ' · no bank info'}
+                  {m.bank_info ? ` · ${m.bank_info_type === 'pix' ? t('bank.pix') : t('bank.short')}: ${m.bank_info}` : ` · ${t('members.noBankInfo')}`}
                 </div>
               </div>
               <select
@@ -70,22 +70,22 @@ export function MembersSection({ householdId }: { householdId: string }) {
                 style={{ width: 'auto' }}
                 value={m.role}
                 onChange={(e) => change(m, { role: e.target.value as Role })}
-                aria-label={`Role of ${m.display_name}`}
+                aria-label={t('members.roleOf', { name: m.display_name })}
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
+                    {t(`role.${r}` as MessageKey)}
                   </option>
                 ))}
               </select>
               <button className="button button--secondary button--small" onClick={() => setEditing(m)}>
-                Edit
+                {t('common.edit')}
               </button>
               <button className="button button--secondary button--small" onClick={() => change(m, { is_active: !m.is_active })}>
-                {m.is_active ? 'Disable' : 'Enable'}
+                {m.is_active ? t('common.disable') : t('common.enable')}
               </button>
               <button className="button button--ghost button--small" onClick={() => resetPassword(m)}>
-                Reset password
+                {t('members.resetPassword')}
               </button>
             </div>
           ))}
@@ -103,6 +103,7 @@ function AddMemberForm({ householdId, isAdmin, onAdded }: { householdId: string;
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const showMessage = useMessage();
+  const { t } = useI18n();
   const set = (key: keyof typeof empty) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value });
 
   const submit = async (e: FormEvent) => {
@@ -118,7 +119,7 @@ function AddMemberForm({ householdId, isAdmin, onAdded }: { householdId: string;
         email: form.email.trim() || undefined,
         whatsapp: form.whatsapp.trim() || undefined,
       });
-      showMessage('success', `${form.display_name || form.login_name} added`);
+      showMessage('success', t('members.added', { name: form.display_name || form.login_name }));
       setForm(empty);
       onAdded();
     } catch (err) {
@@ -131,59 +132,59 @@ function AddMemberForm({ householdId, isAdmin, onAdded }: { householdId: string;
   return (
     <form className="card" onSubmit={submit}>
       <h2 className="card__title" style={{ marginBottom: 6 }}>
-        Add a person
+        {t('members.addTitle')}
       </h2>
       <p className="muted small" style={{ marginBottom: 14 }}>
-        Creates their account. Share the login and password with them.
-        {isAdmin && ' As admin, you can also type an existing login to add that person here (no password needed).'}
+        {t('members.addHint')}
+        {isAdmin && ` ${t('members.addHintAdmin')}`}
       </p>
       <div className="form-grid form-grid--2">
         <div className="form-field">
           <label className="form-label" htmlFor="m-login">
-            Login
+            {t('login.login')}
           </label>
           <input id="m-login" className="form-input" value={form.login_name} onChange={set('login_name')} autoCapitalize="none" required />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="m-name">
-            Name
+            {t('common.name')}
           </label>
           <input id="m-name" className="form-input" value={form.display_name} onChange={set('display_name')} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="m-pass">
-            Password
+            {t('login.password')}
           </label>
           <input id="m-pass" className="form-input" value={form.password} onChange={set('password')} autoComplete="new-password" />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="m-role">
-            Role
+            {t('common.role')}
           </label>
           <select id="m-role" className="form-select" value={form.role} onChange={set('role')}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+                {t(`role.${r}` as MessageKey)}
               </option>
             ))}
           </select>
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="m-email">
-            Email (optional)
+            {t('members.emailOptional')}
           </label>
           <input id="m-email" type="email" className="form-input" value={form.email} onChange={set('email')} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="m-wa">
-            WhatsApp (optional)
+            {t('members.whatsappOptional')}
           </label>
           <input id="m-wa" type="tel" className="form-input" value={form.whatsapp} onChange={set('whatsapp')} />
         </div>
       </div>
       {error && <p className="form-error" style={{ marginBottom: 12 }}>{error}</p>}
       <button className="button button--primary" disabled={saving}>
-        {saving ? 'Adding...' : 'Add person'}
+        {saving ? t('members.adding') : t('members.addButton')}
       </button>
     </form>
   );

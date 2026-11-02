@@ -6,28 +6,30 @@ import { MonthsSection } from '../components/settings/MonthsSection';
 import { RecurringSection } from '../components/settings/RecurringSection';
 import { TopBar } from '../components/TopBar';
 import { useHousehold } from '../hooks/useHousehold';
+import { MessageKey, useI18n } from '../i18n';
 
-const TABS = [
-  { id: 'members', label: 'Members' },
-  { id: 'categories', label: 'Categories' },
-  { id: 'descriptions', label: 'Descriptions' },
-  { id: 'starting', label: 'Fixed costs' },
-  { id: 'months', label: 'Months' },
-  { id: 'general', label: 'General' },
-] as const;
+const TABS: { id: string; label: MessageKey }[] = [
+  { id: 'members', label: 'settings.tab.members' },
+  { id: 'categories', label: 'settings.tab.categories' },
+  { id: 'descriptions', label: 'settings.tab.descriptions' },
+  { id: 'starting', label: 'settings.tab.fixedCosts' },
+  { id: 'months', label: 'settings.tab.months' },
+  { id: 'general', label: 'settings.tab.general' },
+];
 
 /** Household settings, for managers (and app admins). */
 export function SettingsPage() {
   const { householdId } = useParams();
   const [params, setParams] = useSearchParams();
   const { household, error, reload } = useHousehold(householdId);
-  const tab = TABS.some((t) => t.id === params.get('tab')) ? params.get('tab')! : 'members';
+  const { t } = useI18n();
+  const tab = TABS.some((item) => item.id === params.get('tab')) ? params.get('tab')! : 'members';
 
   const content = () => {
     if (error) return <div className="card state-message">{error}</div>;
-    if (!household) return <div className="state-message">Loading...</div>;
+    if (!household) return <div className="state-message">{t('common.loading')}</div>;
     if (!household.permissions.can_manage) {
-      return <div className="card state-message">Only managers can change household settings.</div>;
+      return <div className="card state-message">{t('settings.onlyManagers')}</div>;
     }
     switch (tab) {
       case 'categories':
@@ -51,14 +53,14 @@ export function SettingsPage() {
       <main className="page">
         <div className="page__inner">
           <div>
-            <h1 className="page-title">Settings</h1>
+            <h1 className="page-title">{t('settings.title')}</h1>
             <p className="page-description">{household?.name}</p>
           </div>
           {household?.permissions.can_manage && (
-            <nav className="tabs" aria-label="Settings sections">
-              {TABS.map((t) => (
-                <button key={t.id} className={`tab ${tab === t.id ? 'tab--active' : ''}`} onClick={() => setParams({ tab: t.id })}>
-                  {t.label}
+            <nav className="tabs" aria-label={t('settings.sections')}>
+              {TABS.map((item) => (
+                <button key={item.id} className={`tab ${tab === item.id ? 'tab--active' : ''}`} onClick={() => setParams({ tab: item.id })}>
+                  {t(item.label)}
                 </button>
               ))}
             </nav>

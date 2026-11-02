@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CategoryTotal } from '../api/types';
+import { useI18n } from '../i18n';
 import { formatMoney } from '../utils/format';
 
 const UNCATEGORIZED_COLOR = '#6b6b6b';
@@ -34,17 +35,20 @@ function slicePath(start: number, end: number): string {
 export function CategoryChart({ totals, total, currency }: Props) {
   const [active, setActive] = useState<number | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+  const { t } = useI18n();
 
   if (totals.length === 0 || total <= 0) {
-    return <p className="muted">Nothing spent this month yet.</p>;
+    return <p className="muted">{t('chart.empty')}</p>;
   }
 
-  const color = (t: CategoryTotal) => t.color || UNCATEGORIZED_COLOR;
+  const color = (item: CategoryTotal) => item.color || UNCATEGORIZED_COLOR;
+  // Costs without a category come as one group; its name is translated here
+  const name = (item: CategoryTotal) => (item.category_id ? item.name : t('category.uncategorized'));
   const pct = (value: number) => `${Math.round((value / total) * 100)}%`;
   let angle = 0;
-  const slices = totals.map((t) => {
+  const slices = totals.map((item) => {
     const start = angle;
-    angle += (t.total / total) * Math.PI * 2;
+    angle += (item.total / total) * Math.PI * 2;
     return { start, end: angle };
   });
   const activeItem = active !== null ? totals[active] : null;
@@ -55,7 +59,9 @@ export function CategoryChart({ totals, total, currency }: Props) {
         className="category-chart__svg"
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         role="img"
-        aria-label={`Costs by category: ${totals.map((t) => `${t.name} ${formatMoney(t.total, currency)}`).join(', ')}`}
+        aria-label={t('chart.ariaLabel', {
+          list: totals.map((item) => `${name(item)} ${formatMoney(item.total, currency)}`).join(', '),
+        })}
         onMouseLeave={() => {
           setActive(null);
           setTip(null);
@@ -92,7 +98,7 @@ export function CategoryChart({ totals, total, currency }: Props) {
           ))
         )}
         <text x={CENTER} y={CENTER - 4} textAnchor="middle" fill="#8c8c8c" fontSize="11">
-          {activeItem ? activeItem.name : 'Total'}
+          {activeItem ? name(activeItem) : t('chart.total')}
         </text>
         <text x={CENTER} y={CENTER + 14} textAnchor="middle" fill="#f5f5f5" fontSize="15" fontWeight="700">
           {formatMoney(activeItem ? activeItem.total : total, currency)}
@@ -100,24 +106,24 @@ export function CategoryChart({ totals, total, currency }: Props) {
       </svg>
 
       <ul className="category-chart__legend">
-        {totals.map((t, i) => (
+        {totals.map((item, i) => (
           <li
-            key={t.category_id ?? 'none'}
+            key={item.category_id ?? 'none'}
             className={`legend-item ${active === i ? 'legend-item--active' : ''}`}
             onMouseEnter={() => setActive(i)}
             onMouseLeave={() => setActive(null)}
           >
-            <span className="legend-item__swatch" style={{ background: color(t) }} />
-            <span>{t.name}</span>
-            <span className="num">{formatMoney(t.total, currency)}</span>
-            <span className="legend-item__pct">{pct(t.total)}</span>
+            <span className="legend-item__swatch" style={{ background: color(item) }} />
+            <span>{name(item)}</span>
+            <span className="num">{formatMoney(item.total, currency)}</span>
+            <span className="legend-item__pct">{pct(item.total)}</span>
           </li>
         ))}
       </ul>
 
       {tip && activeItem && (
         <div className="chart-tooltip" style={{ left: tip.x + 12, top: tip.y + 12 }}>
-          <strong>{activeItem.name}</strong> · {formatMoney(activeItem.total, currency)} ({pct(activeItem.total)})
+          <strong>{name(activeItem)}</strong> · {formatMoney(activeItem.total, currency)} ({pct(activeItem.total)})
         </div>
       )}
     </div>

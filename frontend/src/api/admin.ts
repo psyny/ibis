@@ -2,7 +2,13 @@ import { request } from './config';
 import type { AdminHousehold, UserInfo } from './types';
 
 export const listAllHouseholds = () => request<AdminHousehold[]>('/api/admin/households');
-export const createHousehold = (data: { name: string; currency: string; timezone: string; auto_close_days: number | null }) =>
+export const createHousehold = (data: {
+  name: string;
+  currency: string;
+  timezone: string;
+  auto_close_days: number | null;
+  language: string;
+}) =>
   request<AdminHousehold>('/api/admin/households', { method: 'POST', body: data });
 export const deleteHousehold = (id: string) => request<void>(`/api/admin/households/${id}`, { method: 'DELETE' });
 

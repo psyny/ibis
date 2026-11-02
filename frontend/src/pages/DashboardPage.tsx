@@ -15,7 +15,8 @@ import { SplitCard } from '../components/SplitCard';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
-import { formatMoney, monthKey, monthLabel, monthOfDate, parseMonthKey, shiftMonth } from '../utils/format';
+import { useI18n } from '../i18n';
+import { formatMoney, longDate, monthKey, monthLabel, monthOfDate, parseMonthKey, shiftMonth } from '../utils/format';
 
 export function DashboardPage() {
   const { householdId } = useParams();
@@ -30,6 +31,7 @@ export function DashboardPage() {
   const [deleting, setDeleting] = useState<Cost | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const showMessage = useMessage();
+  const { t, tn } = useI18n();
 
   // Which month to show: ?m=YYYY-MM if given, otherwise the default month: last month while it is
   // still open (month transitions), else the current month (in the household's timezone).
@@ -87,7 +89,7 @@ export function DashboardPage() {
     if (!householdId || !selected) return;
     try {
       await createMonth(householdId, selected.year, selected.month);
-      showMessage('success', `${monthLabel(selected.year, selected.month)} created`);
+      showMessage('success', t('month.created', { month: monthLabel(selected.year, selected.month) }));
       load();
     } catch (e) {
       showMessage('error', (e as Error).message);
@@ -98,7 +100,7 @@ export function DashboardPage() {
     if (!householdId || !summary) return;
     try {
       await reopenMonth(householdId, summary.month.year, summary.month.month);
-      showMessage('success', `${monthLabel(summary.month.year, summary.month.month)} reopened`);
+      showMessage('success', t('month.reopened', { month: monthLabel(summary.month.year, summary.month.month) }));
       load();
     } catch (e) {
       showMessage('error', (e as Error).message);
@@ -112,7 +114,7 @@ export function DashboardPage() {
       const { added } = await applyRecurring(householdId, summary.month.year, summary.month.month);
       showMessage(
         'success',
-        added ? `Added ${added} fixed cost${added > 1 ? 's' : ''} to ${label}` : `All fixed costs are already in ${label}`,
+        added ? tn('month.fixedAdded', added, { month: label }) : t('month.fixedNone', { month: label }),
       );
       if (added) load();
     } catch (e) {
@@ -148,7 +150,7 @@ export function DashboardPage() {
           <div className="topbar__month">
             <button
               className="icon-button topbar__month-arrow"
-              aria-label="Previous month"
+              aria-label={t('month.previous')}
               onClick={() => {
                 const p = shiftMonth(selected.year, selected.month, -1);
                 goToMonth(p.year, p.month);
@@ -156,12 +158,12 @@ export function DashboardPage() {
             >
               ‹
             </button>
-            <button className="topbar__month-label" onClick={() => setPickerOpen(true)} title="Change month">
+            <button className="topbar__month-label" onClick={() => setPickerOpen(true)} title={t('month.change')}>
               {monthLabel(selected.year, selected.month, 'short')}
             </button>
             <button
               className="icon-button topbar__month-arrow"
-              aria-label="Next month"
+              aria-label={t('month.next')}
               onClick={() => {
                 const n = shiftMonth(selected.year, selected.month, 1);
                 goToMonth(n.year, n.month);
@@ -183,25 +185,25 @@ export function DashboardPage() {
 
       <main className="page">
         <div className="page__inner">
-          {!household && <div className="state-message">Loading...</div>}
+          {!household && <div className="state-message">{t('common.loading')}</div>}
           {error && <div className="card state-message form-error">{error}</div>}
 
           {missingMonth && selected && (
             <div className="card state-message">
-              {monthLabel(selected.year, selected.month)} has not been created yet.
+              {t('month.notCreated', { month: monthLabel(selected.year, selected.month) })}
               {household?.permissions.can_manage ? (
                 <div style={{ marginTop: 16 }}>
                   <button className="button button--primary" onClick={handleCreateMonth}>
-                    Create {monthLabel(selected.year, selected.month)}
+                    {t('month.create', { month: monthLabel(selected.year, selected.month) })}
                   </button>
                 </div>
               ) : (
-                <div className="state-message__sub">A manager can create it.</div>
+                <div className="state-message__sub">{t('month.managerCanCreate')}</div>
               )}
               {!isCurrentMonth && (
                 <div style={{ marginTop: 12 }}>
                   <button className="button button--ghost" onClick={() => current && goToMonth(current.year, current.month)}>
-                    Go to the current month
+                    {t('month.goToCurrent')}
                   </button>
                 </div>
               )}
@@ -212,28 +214,28 @@ export function DashboardPage() {
             <>
               {summary.month.status === 'closed' && (
                 <div className="banner banner--warning">
-                  {monthLabel(summary.month.year, summary.month.month)} is closed. Costs can't be added or changed.
+                  {t('month.closedBanner', { month: monthLabel(summary.month.year, summary.month.month) })}
                 </div>
               )}
               {showingOpenLastMonth && current && (
                 <p className="month-warning" role="status">
                   <span aria-hidden>⚠</span>
                   <span>
-                    Showing last month ({monthLabel(summary.month.year, summary.month.month)}) because it's not closed yet.{' '}
+                    {t('month.showingLast', { month: monthLabel(summary.month.year, summary.month.month) })}{' '}
                     <button className="link-button" onClick={() => goToMonth(current.year, current.month)}>
-                      Go to {monthLabel(current.year, current.month)}
+                      {t('month.goTo', { month: monthLabel(current.year, current.month) })}
                     </button>
                   </span>
                 </p>
               )}
               {summary.month.status === 'open' && summary.month.auto_close_on && (
                 <p className="muted small">
-                  Closes automatically on {new Date(summary.month.auto_close_on + 'T00:00').toLocaleDateString()}
+                  {t('month.autoCloses', { date: longDate(summary.month.auto_close_on) })}
                 </p>
               )}
 
               {summary.restricted && (
-                <p className="muted small">This household shows guests only the costs and transfers that involve them.</p>
+                <p className="muted small">{t('dashboard.restrictedNote')}</p>
               )}
 
               <SplitCard summary={summary} onPersonClick={setContactId} onPayClick={setPaying} />
@@ -242,7 +244,7 @@ export function DashboardPage() {
                 <section className="card" aria-labelledby="categories-title">
                   <div className="card__header">
                     <h2 className="card__title" id="categories-title">
-                      By category
+                      {t('dashboard.byCategory')}
                     </h2>
                     <span className="card__subtitle num">{formatMoney(summary.total, summary.currency)}</span>
                   </div>
@@ -253,7 +255,7 @@ export function DashboardPage() {
               <section className="card" aria-labelledby="costs-title">
                 <div className="card__header">
                   <h2 className="card__title" id="costs-title">
-                    {summary.restricted ? 'My costs' : 'Costs'}
+                    {summary.restricted ? t('dashboard.myCosts') : t('dashboard.costs')}
                   </h2>
                   <span className="card__subtitle">
                     {summary.costs.length} · {formatMoney(summary.total, summary.currency)}
@@ -265,7 +267,7 @@ export function DashboardPage() {
               <div className="page-actions">
                 {summary.can_add_cost && (
                   <Link to={addUrl} className="button button--primary button--large">
-                    + Add cost
+                    + {t('dashboard.addCost')}
                   </Link>
                 )}
               </div>
@@ -276,13 +278,13 @@ export function DashboardPage() {
 
       {confirmClose && summary && householdId && (
         <ConfirmModal
-          title={`Close ${monthLabel(summary.month.year, summary.month.month)}?`}
-          confirmLabel="Close month"
+          title={t('month.closeConfirmTitle', { month: monthLabel(summary.month.year, summary.month.month) })}
+          confirmLabel={t('monthMenu.close')}
           onClose={() => setConfirmClose(false)}
           onConfirm={async () => {
             try {
               await closeMonth(householdId, summary.month.year, summary.month.month);
-              showMessage('success', `${monthLabel(summary.month.year, summary.month.month)} closed`);
+              showMessage('success', t('month.closedToast', { month: monthLabel(summary.month.year, summary.month.month) }));
               load();
             } catch (e) {
               showMessage('error', (e as Error).message);
@@ -290,19 +292,19 @@ export function DashboardPage() {
             }
           }}
         >
-          Nobody will be able to add, change or delete costs in this month. A manager can reopen it later.
+          {t('month.closeConfirmBody')}
         </ConfirmModal>
       )}
       {deleting && householdId && summary && (
         <ConfirmModal
-          title="Delete this cost?"
-          confirmLabel="Delete"
+          title={t('cost.deleteConfirm')}
+          confirmLabel={t('common.delete')}
           danger
           onClose={() => setDeleting(null)}
           onConfirm={async () => {
             try {
               await deleteCost(householdId, deleting.id);
-              showMessage('success', `Deleted ${deleting.description}`);
+              showMessage('success', t('cost.deletedNamed', { name: deleting.description }));
               load();
             } catch (e) {
               showMessage('error', (e as Error).message);
@@ -316,9 +318,10 @@ export function DashboardPage() {
       {paying && summary && householdId && summary.members.some((m) => m.id === paying.to_member_id) && (
         <PixPayModal
           receiver={memberAsReceiver(householdId, summary.members.find((m) => m.id === paying.to_member_id)!)}
-          subtitle={`${summary.members.find((m) => m.id === paying.from_member_id)?.display_name || ''} pays ${
-            summary.members.find((m) => m.id === paying.to_member_id)?.display_name || ''
-          }`}
+          subtitle={t('pay.subtitle', {
+            from: summary.members.find((m) => m.id === paying.from_member_id)?.display_name || '',
+            to: summary.members.find((m) => m.id === paying.to_member_id)?.display_name || '',
+          })}
           amount={paying.amount}
           currency={summary.currency}
           onClose={() => setPaying(null)}

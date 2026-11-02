@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { useI18n } from '../i18n';
 import { Modal } from './Modal';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 /** Asks "are you sure?" before an action. Closes itself after the action succeeds. */
 export function ConfirmModal({ title, children, confirmLabel, danger, onConfirm, onClose }: Props) {
   const [busy, setBusy] = useState(false);
+  const { t } = useI18n();
 
   const confirm = async () => {
     setBusy(true);
@@ -31,10 +33,10 @@ export function ConfirmModal({ title, children, confirmLabel, danger, onConfirm,
       <div className="muted">{children}</div>
       <div className="modal__actions">
         <button className="button button--ghost" onClick={onClose} disabled={busy}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button className={`button ${danger ? 'button--danger' : 'button--primary'}`} onClick={confirm} disabled={busy}>
-          {busy ? 'Working...' : confirmLabel}
+          {busy ? t('common.working') : confirmLabel}
         </button>
       </div>
     </Modal>

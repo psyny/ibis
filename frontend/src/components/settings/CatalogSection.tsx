@@ -11,12 +11,14 @@ import {
 } from '../../api/households';
 import type { Category, Preset } from '../../api/types';
 import { useMessage } from '../../contexts/MessageContext';
+import { useI18n } from '../../i18n';
 import { formatMoney, parseAmount } from '../../utils/format';
 
 export function CategoriesSection({ householdId }: { householdId: string }) {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [name, setName] = useState('');
   const showMessage = useMessage();
+  const { t } = useI18n();
 
   const load = useCallback(() => {
     listCategories(householdId, true)
@@ -38,14 +40,14 @@ export function CategoriesSection({ householdId }: { householdId: string }) {
   const add = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    run(() => createCategory(householdId, { name: name.trim() }), `Category ${name.trim()} added`).then(() => setName(''));
+    run(() => createCategory(householdId, { name: name.trim() }), t('categories.added', { name: name.trim() })).then(() => setName(''));
   };
 
   const remove = async (c: Category) => {
-    if (!window.confirm(`Delete category ${c.name}? If costs use it, it is archived instead.`)) return;
+    if (!window.confirm(t('categories.deleteConfirm', { name: c.name }))) return;
     try {
       const result = await deleteCategory(householdId, c.id);
-      showMessage('success', result.deleted ? 'Category deleted' : 'Category is in use, so it was archived');
+      showMessage('success', result.deleted ? t('categories.deleted') : t('categories.archivedInstead'));
       load();
     } catch (e) {
       showMessage('error', (e as Error).message);
@@ -55,13 +57,13 @@ export function CategoriesSection({ householdId }: { householdId: string }) {
   return (
     <section className="card">
       <h2 className="card__title" style={{ marginBottom: 6 }}>
-        Categories
+        {t('settings.tab.categories')}
       </h2>
       <p className="muted small" style={{ marginBottom: 8 }}>
-        Used to group costs and in the monthly chart. Archived categories can't be picked for new costs.
+        {t('categories.hint')}
       </p>
-      {!categories && <p className="muted">Loading...</p>}
-      {categories?.length === 0 && <p className="muted">No categories yet.</p>}
+      {!categories && <p className="muted">{t('common.loading')}</p>}
+      {categories?.length === 0 && <p className="muted">{t('categories.empty')}</p>}
       <div className="list">
         {categories?.map((c) => (
           <div key={c.id} className={`list-item ${c.is_archived ? 'list-item--disabled' : ''}`}>
@@ -70,32 +72,32 @@ export function CategoriesSection({ householdId }: { householdId: string }) {
               className="form-input"
               defaultValue={c.color || '#6b6b6b'}
               onBlur={(e) => e.target.value !== c.color && run(() => updateCategory(householdId, c.id, { color: e.target.value }))}
-              aria-label={`Color of ${c.name}`}
+              aria-label={t('categories.colorOf', { name: c.name })}
             />
             <input
               className="form-input grow"
               defaultValue={c.name}
               onBlur={(e) => {
                 const value = e.target.value.trim();
-                if (value && value !== c.name) run(() => updateCategory(householdId, c.id, { name: value }), 'Renamed');
+                if (value && value !== c.name) run(() => updateCategory(householdId, c.id, { name: value }), t('categories.renamed'));
               }}
-              aria-label="Category name"
+              aria-label={t('categories.nameLabel')}
             />
             <button
               className="button button--secondary button--small"
               onClick={() => run(() => updateCategory(householdId, c.id, { is_archived: !c.is_archived }))}
             >
-              {c.is_archived ? 'Restore' : 'Archive'}
+              {c.is_archived ? t('categories.restore') : t('categories.archive')}
             </button>
             <button className="button button--danger button--small" onClick={() => remove(c)}>
-              Delete
+              {t('common.delete')}
             </button>
           </div>
         ))}
       </div>
       <form className="row" onSubmit={add} style={{ marginTop: 12 }}>
-        <input className="form-input grow" placeholder="New category, e.g. Groceries" value={name} onChange={(e) => setName(e.target.value)} />
-        <button className="button button--primary">Add</button>
+        <input className="form-input grow" placeholder={t('categories.newPlaceholder')} value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="button button--primary">{t('common.add')}</button>
       </form>
     </section>
   );
@@ -106,6 +108,7 @@ export function PresetsSection({ householdId, currency }: { householdId: string;
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState({ name: '', category_id: '', amount: '' });
   const showMessage = useMessage();
+  const { t } = useI18n();
 
   const load = useCallback(() => {
     Promise.all([listPresets(householdId), listCategories(householdId)])
@@ -154,7 +157,7 @@ export function PresetsSection({ householdId, currency }: { householdId: string;
 
   const categoryOptions = (
     <>
-      <option value="">No category</option>
+      <option value="">{t('categories.none')}</option>
       {categories.map((c) => (
         <option key={c.id} value={c.id}>
           {c.name}
@@ -166,14 +169,13 @@ export function PresetsSection({ householdId, currency }: { householdId: string;
   return (
     <section className="card">
       <h2 className="card__title" style={{ marginBottom: 6 }}>
-        Cost descriptions
+        {t('presets.title')}
       </h2>
       <p className="muted small" style={{ marginBottom: 8 }}>
-        A premade list people can tap when adding a cost. Picking one also fills its category (and amount, if set). People can
-        still type any description.
+        {t('presets.hint')}
       </p>
-      {!presets && <p className="muted">Loading...</p>}
-      {presets?.length === 0 && <p className="muted">No descriptions yet.</p>}
+      {!presets && <p className="muted">{t('common.loading')}</p>}
+      {presets?.length === 0 && <p className="muted">{t('presets.empty')}</p>}
       <div className="list">
         {presets?.map((p) => (
           <div key={p.id} className="list-item">
@@ -186,32 +188,32 @@ export function PresetsSection({ householdId, currency }: { householdId: string;
               style={{ width: 'auto' }}
               value={p.category_id || ''}
               onChange={(e) => setCategory(p, e.target.value)}
-              aria-label={`Category of ${p.name}`}
+              aria-label={t('presets.categoryOf', { name: p.name })}
             >
               {categoryOptions}
             </select>
             <button className="button button--danger button--small" onClick={() => remove(p)}>
-              Delete
+              {t('common.delete')}
             </button>
           </div>
         ))}
       </div>
       <form onSubmit={add} style={{ marginTop: 12 }}>
         <div className="form-grid form-grid--3">
-          <input className="form-input" placeholder="Description, e.g. Internet" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input className="form-input" placeholder={t('presets.namePlaceholder')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <select className="form-select" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
             {categoryOptions}
           </select>
           <input
             className="form-input"
-            placeholder="Default amount (optional)"
+            placeholder={t('presets.amountPlaceholder')}
             inputMode="decimal"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
           />
         </div>
         <button className="button button--primary" style={{ marginTop: 10 }}>
-          Add description
+          {t('presets.add')}
         </button>
       </form>
     </section>

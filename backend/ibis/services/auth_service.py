@@ -65,6 +65,7 @@ class AuthService:
                         id=household.id,
                         name=household.name,
                         currency=household.currency,
+                        language=household.language,
                         role=Role.MANAGER.value,
                         member_id=member.id if member else None,
                     )
@@ -77,6 +78,7 @@ class AuthService:
                         id=household.id,
                         name=household.name,
                         currency=household.currency,
+                        language=household.language,
                         role=member.role,
                         member_id=member.id,
                     )

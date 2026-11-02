@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { updateMember } from '../../api/households';
 import type { BankInfoType, Member, Role } from '../../api/types';
 import { useMessage } from '../../contexts/MessageContext';
-import { ROLE_LABELS } from '../../utils/format';
+import { MessageKey, useI18n } from '../../i18n';
 import { BankInfoFields, bankInfoError, normalizeBankInfo } from '../BankInfoFields';
 import { Modal } from '../Modal';
 
@@ -28,12 +28,13 @@ export function EditMemberModal({ householdId, member, onSaved, onClose }: Props
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const showMessage = useMessage();
+  const { t } = useI18n();
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [key]: e.target.value });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.display_name.trim()) return setError('Enter a name');
-    const bankProblem = bankInfoError(bankType, form.bank_info);
+    if (!form.display_name.trim()) return setError(t('validation.name'));
+    const bankProblem = bankInfoError(t, bankType, form.bank_info);
     if (bankProblem) return setError(bankProblem);
     setError('');
     setSaving(true);
@@ -45,7 +46,7 @@ export function EditMemberModal({ householdId, member, onSaved, onClose }: Props
         bank_info_type: bankType,
         ...(role !== member.role ? { role } : {}),
       });
-      showMessage('success', `${form.display_name.trim()} saved`);
+      showMessage('success', t('members.saved', { name: form.display_name.trim() }));
       onSaved();
       onClose();
     } catch (err) {
@@ -56,25 +57,25 @@ export function EditMemberModal({ householdId, member, onSaved, onClose }: Props
   };
 
   return (
-    <Modal title={`Edit ${member.display_name}`} onClose={onClose}>
+    <Modal title={t('members.editTitle', { name: member.display_name })} onClose={onClose}>
       <form onSubmit={submit}>
         <p className="muted small" style={{ marginBottom: 12 }}>
-          Login: @{member.login_name}
+          {t('members.loginLabel', { login: member.login_name })}
         </p>
         <div className="form-field">
           <label className="form-label" htmlFor="e-name">
-            Name
+            {t('common.name')}
           </label>
           <input id="e-name" className="form-input" value={form.display_name} onChange={set('display_name')} required />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="e-role">
-            Role
+            {t('common.role')}
           </label>
           <select id="e-role" className="form-select" value={role} onChange={(e) => setRole(e.target.value as Role)}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+                {t(`role.${r}` as MessageKey)}
               </option>
             ))}
           </select>
@@ -88,23 +89,23 @@ export function EditMemberModal({ householdId, member, onSaved, onClose }: Props
         />
         <div className="form-field">
           <label className="form-label" htmlFor="e-wa">
-            WhatsApp
+            {t('common.whatsapp')}
           </label>
           <input id="e-wa" type="tel" className="form-input" value={form.whatsapp} onChange={set('whatsapp')} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="e-email">
-            Email
+            {t('common.email')}
           </label>
           <input id="e-email" type="email" className="form-input" value={form.email} onChange={set('email')} />
         </div>
         {error && <p className="form-error">{error}</p>}
         <div className="modal__actions">
           <button type="button" className="button button--ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button className="button button--primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </form>

@@ -1,4 +1,5 @@
 import type { Member } from '../api/types';
+import { useI18n } from '../i18n';
 
 interface PersonChipsProps {
   /** Members already ordered by the API: residents A-Z, then guests A-Z */
@@ -13,6 +14,7 @@ interface PersonChipsProps {
 const isResident = (m: Member) => m.role === 'manager' || m.role === 'resident';
 
 export function PersonChips({ members, selected, onChange, label, shortcuts }: PersonChipsProps) {
+  const { t } = useI18n();
   const residents = members.filter(isResident);
   const guests = members.filter((m) => m.role === 'guest');
   const toggle = (id: string) =>
@@ -31,7 +33,7 @@ export function PersonChips({ members, selected, onChange, label, shortcuts }: P
       >
         {isOn && <span className="chip__check">✓</span>}
         {m.display_name}
-        {!m.is_active && <span className="muted small">(disabled)</span>}
+        {!m.is_active && <span className="muted small">{t('people.disabledMark')}</span>}
       </button>
     );
   };
@@ -40,7 +42,7 @@ export function PersonChips({ members, selected, onChange, label, shortcuts }: P
     <div role="group" aria-label={label}>
       <div className="chips">
         {residents.map(chip)}
-        {guests.length > 0 && <div className="chips-divider">Guests</div>}
+        {guests.length > 0 && <div className="chips-divider">{t('people.guests')}</div>}
         {guests.map(chip)}
       </div>
       {shortcuts && (
@@ -50,7 +52,7 @@ export function PersonChips({ members, selected, onChange, label, shortcuts }: P
             className={`chip chip--small ${sameSet(members.map((m) => m.id)) ? 'chip--selected' : ''}`}
             onClick={() => onChange(members.map((m) => m.id))}
           >
-            Everyone
+            {t('people.everyone')}
           </button>
           {guests.length > 0 && (
             <button
@@ -58,11 +60,11 @@ export function PersonChips({ members, selected, onChange, label, shortcuts }: P
               className={`chip chip--small ${sameSet(residents.map((m) => m.id)) ? 'chip--selected' : ''}`}
               onClick={() => onChange(residents.map((m) => m.id))}
             >
-              Residents only
+              {t('people.residentsOnly')}
             </button>
           )}
           <button type="button" className="chip chip--small" onClick={() => onChange([])}>
-            Clear
+            {t('people.clear')}
           </button>
         </div>
       )}

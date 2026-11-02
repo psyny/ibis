@@ -22,6 +22,7 @@ class AdminHouseholdRead(BaseModel):
     currency: str
     timezone: str
     auto_close_days: int | None = None
+    language: str = "en"
     member_count: int
 
 
@@ -32,6 +33,7 @@ def _to_read(service: HouseholdService, household) -> AdminHouseholdRead:
         currency=household.currency,
         timezone=household.timezone,
         auto_close_days=household.auto_close_days,
+        language=household.language,
         member_count=service.member_count(household.id),
     )
 

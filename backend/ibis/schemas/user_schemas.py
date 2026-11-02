@@ -33,6 +33,7 @@ class MyHousehold(BaseModel):
     id: uuid.UUID
     name: str
     currency: str
+    language: str = "en"
     role: str
     member_id: Optional[uuid.UUID] = None  # None when an admin views a household they don't belong to
 

@@ -6,6 +6,7 @@ import { PersonChips } from '../components/PersonChips';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
+import { useI18n } from '../i18n';
 import { addDays, formatMoney, lastDayOfMonth, monthKey, monthLabel, monthOfDate, parseAmount, shiftMonth } from '../utils/format';
 
 const isResident = (m: Member) => m.role === 'manager' || m.role === 'resident';
@@ -19,6 +20,7 @@ export function CostFormPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const showMessage = useMessage();
+  const { t, tn } = useI18n();
   const { household, error: householdError } = useHousehold(householdId);
   const isEdit = !!costId;
 
@@ -132,12 +134,12 @@ export function CostFormPage() {
   };
 
   const validate = (): string => {
-    if (!(amount > 0)) return 'Enter an amount greater than zero';
-    if (Math.round(amount * 100) / 100 !== amount) return 'Use at most 2 decimals';
-    if (!description.trim()) return 'Enter a description';
-    if (!date) return 'Pick a date';
-    if (payers.length === 0) return 'Pick who paid';
-    if (coverers.length === 0) return 'Pick who covers it';
+    if (!(amount > 0)) return t('validation.amountPositive');
+    if (Math.round(amount * 100) / 100 !== amount) return t('validation.twoDecimals');
+    if (!description.trim()) return t('validation.description');
+    if (!date) return t('validation.date');
+    if (payers.length === 0) return t('validation.payers');
+    if (coverers.length === 0) return t('validation.coverers');
     return '';
   };
 
@@ -157,10 +159,10 @@ export function CostFormPage() {
     try {
       if (isEdit && costId) {
         await updateCost(householdId, costId, body);
-        showMessage('success', 'Cost updated');
+        showMessage('success', t('cost.updated'));
       } else {
         await createCost(householdId, body);
-        showMessage('success', `Added ${description.trim()} · ${formatMoney(amount, currency)}`);
+        showMessage('success', t('cost.addedToast', { name: description.trim(), amount: formatMoney(amount, currency) }));
       }
       if (addAnother) {
         setAmountText('');
@@ -179,10 +181,10 @@ export function CostFormPage() {
   };
 
   const remove = async () => {
-    if (!householdId || !costId || !window.confirm('Delete this cost?')) return;
+    if (!householdId || !costId || !window.confirm(t('cost.deleteConfirm'))) return;
     try {
       await deleteCost(householdId, costId);
-      showMessage('success', 'Cost deleted');
+      showMessage('success', t('cost.deleted'));
       navigate(backUrl());
     } catch (e) {
       setFormError((e as Error).message);
@@ -210,29 +212,29 @@ export function CostFormPage() {
   );
 
   if (householdError || loadError) return shell(<div className="card state-message">{householdError || loadError}</div>);
-  if (!household || !ready) return shell(<div className="state-message">Loading...</div>);
+  if (!household || !ready) return shell(<div className="state-message">{t('common.loading')}</div>);
   if (!household.permissions.can_add_cost) {
     return shell(
       <div className="card state-message">
-        Viewers can't add costs. Ask a manager if you need to.
+        {t('cost.viewersCannotAdd')}
         <div style={{ marginTop: 16 }}>
           <Link to={`/h/${householdId}`} className="button button--secondary">
-            Back to monthly costs
+            {t('cost.backToMonthly')}
           </Link>
         </div>
       </div>,
     );
   }
   if (isEdit && existing && !existing.can_edit) {
-    return shell(<div className="card state-message">This cost can't be edited (closed month, or added by someone else).</div>);
+    return shell(<div className="card state-message">{t('cost.cannotEdit')}</div>);
   }
 
   return shell(
     <>
       <div className="row row--between">
-        <h1 className="page-title">{isEdit ? 'Edit cost' : 'Add cost'}</h1>
+        <h1 className="page-title">{isEdit ? t('cost.editTitle') : t('cost.addTitle')}</h1>
         <Link to={backUrl()} className="button button--ghost">
-          Cancel
+          {t('common.cancel')}
         </Link>
       </div>
 
@@ -240,7 +242,7 @@ export function CostFormPage() {
         <section className="card">
           <div className="form-field">
             <label className="form-label" htmlFor="amount">
-              Amount ({currency})
+              {t('cost.amount', { currency })}
             </label>
             <input
               id="amount"
@@ -256,12 +258,12 @@ export function CostFormPage() {
 
           <div className="form-field">
             <label className="form-label" htmlFor="description">
-              Description
+              {t('cost.description')}
             </label>
             <input
               id="description"
               className="form-input"
-              placeholder="e.g. Groceries"
+              placeholder={t('cost.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={200}
@@ -291,8 +293,8 @@ export function CostFormPage() {
 
           {visibleCategories.length > 0 && (
             <div className="form-field">
-              <span className="form-label">Category</span>
-              <div className="chips" role="group" aria-label="Category">
+              <span className="form-label">{t('cost.category')}</span>
+              <div className="chips" role="group" aria-label={t('cost.category')}>
                 {visibleCategories.map((c) => (
                   <button
                     type="button"
@@ -311,7 +313,7 @@ export function CostFormPage() {
 
           <div className="form-field" style={{ marginBottom: 0 }}>
             <label className="form-label" htmlFor="date">
-              Date
+              {t('cost.date')}
             </label>
             <div className="row">
               <input id="date" type="date" className="form-input grow" value={date} onChange={(e) => setDate(e.target.value)} style={{ maxWidth: 200 }} />
@@ -320,22 +322,22 @@ export function CostFormPage() {
                 className={`chip chip--small ${date === household.today ? 'chip--selected' : ''}`}
                 onClick={() => setDate(household.today)}
               >
-                Today
+                {t('cost.today')}
               </button>
               <button
                 type="button"
                 className={`chip chip--small ${date === addDays(household.today, -1) ? 'chip--selected' : ''}`}
                 onClick={() => setDate(addDays(household.today, -1))}
               >
-                Yesterday
+                {t('cost.yesterday')}
               </button>
             </div>
             {otherMonth && (
               <p className="month-warning" role="status">
                 <span aria-hidden>⚠</span>
                 {autoPickedLastMonth && date.slice(0, 7) === autoMonthKey
-                  ? `${otherMonthLabel} isn't closed yet, so this cost goes there by default. Change the date if it belongs to ${currentMonthLabel}.`
-                  : `This cost goes to ${otherMonthLabel}, not the current month (${currentMonthLabel}).`}
+                  ? t('cost.lastMonthPicked', { month: otherMonthLabel, current: currentMonthLabel })
+                  : t('cost.otherMonth', { month: otherMonthLabel, current: currentMonthLabel })}
               </p>
             )}
           </div>
@@ -343,19 +345,19 @@ export function CostFormPage() {
 
         <section className="card" style={{ marginTop: 16 }}>
           <div className="form-field" style={{ marginBottom: 0 }}>
-            <span className="form-label">Who paid</span>
-            <PersonChips members={selectable} selected={payers} onChange={setPayers} label="Who paid" />
-            {payers.length > 1 && <span className="form-hint">Each paid an equal part.</span>}
+            <span className="form-label">{t('cost.whoPaid')}</span>
+            <PersonChips members={selectable} selected={payers} onChange={setPayers} label={t('cost.whoPaid')} />
+            {payers.length > 1 && <span className="form-hint">{t('cost.eachPaidEqual')}</span>}
           </div>
         </section>
 
         <section className="card" style={{ marginTop: 16 }}>
           <div className="form-field" style={{ marginBottom: 0 }}>
-            <span className="form-label">Who covers</span>
-            <PersonChips members={selectable} selected={coverers} onChange={setCoverers} label="Who covers" shortcuts />
+            <span className="form-label">{t('cost.whoCovers')}</span>
+            <PersonChips members={selectable} selected={coverers} onChange={setCoverers} label={t('cost.whoCovers')} shortcuts />
             {share !== null && (
               <span className="form-hint" style={{ marginTop: 6 }}>
-                {coverers.length === 1 ? 'Covers' : `${coverers.length} people, each covers`}{' '}
+                {tn('cost.shareHint', coverers.length)}{' '}
                 <strong className="num">{formatMoney(share, currency)}</strong>
               </span>
             )}
@@ -372,27 +374,27 @@ export function CostFormPage() {
         <div className="form-actions-split">
           {isEdit ? (
             <Link to={backUrl()} className="button button--secondary button--large">
-              Cancel
+              {t('common.cancel')}
             </Link>
           ) : (
             <button type="button" className="button button--secondary button--large" onClick={() => save(true)} disabled={saving}>
-              Add and continue
+              {t('cost.addContinue')}
             </button>
           )}
           <button
             type="submit"
             className={`button button--large ${!isEdit && otherMonth ? 'button--warning' : 'button--primary'}`}
             disabled={saving}
-            title={!isEdit && otherMonth ? `Adds to ${otherMonthLabel}, not the current month (${currentMonthLabel})` : undefined}
+            title={!isEdit && otherMonth ? t('cost.addsToOther', { month: otherMonthLabel, current: currentMonthLabel }) : undefined}
           >
-            {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Add and close'}
+            {saving ? t('common.saving') : isEdit ? t('cost.saveChanges') : t('cost.addClose')}
           </button>
         </div>
 
         {isEdit && (
           <div style={{ marginTop: 24, textAlign: 'center' }}>
             <button type="button" className="button button--danger" onClick={remove}>
-              Delete cost
+              {t('cost.delete')}
             </button>
           </div>
         )}

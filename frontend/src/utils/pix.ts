@@ -1,5 +1,12 @@
 import { payload } from 'react-qrcode-pix';
-import { parsePixKey, PixKeyKind } from './pixKey';
+import { parsePixKey, PixKeyErrorCode, PixKeyKind, PixKeyParams } from './pixKey';
+
+/** A PIX key that can't be used; `code` + `params` let the screen translate the message. */
+export class PixKeyError extends Error {
+  constructor(message: string, public code: PixKeyErrorCode, public params: PixKeyParams) {
+    super(message);
+  }
+}
 
 /** City is required by the PIX QR format; banks don't check it for person-to-person transfers. */
 export const PIX_CITY = 'BRASIL';
@@ -27,11 +34,11 @@ export interface PixData {
 /**
  * Build the PIX data and "copia e cola" code to pay `amount` to `name`.
  * The key is cleaned up and its type detected first (see pixKey.ts).
- * Throws an Error with a readable message if the key can't be used.
+ * Throws a PixKeyError (English message + code/params for translation) if the key can't be used.
  */
 export function buildPix(rawKey: string, name: string, amount: number | null): PixData & { code: string; kind: PixKeyKind } {
   const parsed = parsePixKey(rawKey);
-  if (!parsed.ok) throw new Error(parsed.error);
+  if (!parsed.ok) throw new PixKeyError(parsed.error, parsed.code, parsed.params);
   const data: PixData = {
     pixkey: parsed.key,
     merchant: plainName(name, MAX_NAME) || 'RECEBEDOR',

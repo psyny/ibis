@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from domain.languages import DEFAULT_LANGUAGE, LanguageCode
 from domain.roles import Role
 from schemas.user_schemas import BankInfoType
 
@@ -14,6 +15,7 @@ class HouseholdCreate(BaseModel):
     timezone: str = Field("UTC", min_length=1, max_length=64)
     auto_close_days: Optional[int] = Field(None, ge=0, le=365)
     shield_costs_from_guests: bool = False
+    language: LanguageCode = DEFAULT_LANGUAGE
 
 
 class HouseholdUpdate(BaseModel):
@@ -24,6 +26,7 @@ class HouseholdUpdate(BaseModel):
     # auto_close_days=None is ambiguous in a PATCH-like body; use this to turn it off.
     disable_auto_close: bool = False
     shield_costs_from_guests: Optional[bool] = None
+    language: Optional[LanguageCode] = None
 
 
 class HouseholdPermissions(BaseModel):
@@ -38,6 +41,7 @@ class HouseholdRead(BaseModel):
     timezone: str
     auto_close_days: Optional[int] = None
     shield_costs_from_guests: bool = False
+    language: str = DEFAULT_LANGUAGE
     today: date
     my_role: str
     my_member_id: Optional[uuid.UUID] = None

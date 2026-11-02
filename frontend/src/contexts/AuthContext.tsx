@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getMe } from '../api/auth';
 import { clearToken, getToken } from '../api/config';
+import { useI18n } from '../i18n';
 import type { Me } from '../api/types';
 
 const LAST_HOUSEHOLD_KEY = 'ibis_last_household';
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const { setLang } = useI18n();
 
   const refresh = useCallback(async () => {
     if (!getToken()) {
@@ -27,6 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const user = await getMe();
       setMe(user);
+      // Pages outside a household use the language of the last household opened
+      const last = user.households.find((h) => h.id === lastHousehold()) || user.households[0];
+      if (last) setLang(last.language);
       return user;
     } catch {
       setMe(null);
@@ -34,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLang]);
 
   useEffect(() => {
     refresh();

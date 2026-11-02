@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { useI18n } from '../i18n';
 
 export type MessageType = 'error' | 'success' | 'info';
 
@@ -16,6 +17,7 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 
 export function MessageProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<Message | null>(null);
+  const { t } = useI18n();
 
   const showMessage = useCallback((type: MessageType, content: string) => {
     setMessage({ id: Date.now(), type, content });
@@ -33,7 +35,7 @@ export function MessageProvider({ children }: { children: ReactNode }) {
       {message && (
         <div className={`toast toast--${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>
           <span>{message.content}</span>
-          <button className="toast__close" onClick={() => setMessage(null)} aria-label="Dismiss">
+          <button className="toast__close" onClick={() => setMessage(null)} aria-label={t('common.dismiss')}>
             ×
           </button>
         </div>

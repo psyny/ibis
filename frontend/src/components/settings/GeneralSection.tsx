@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { updateHousehold } from '../../api/households';
 import type { Household } from '../../api/types';
 import { useMessage } from '../../contexts/MessageContext';
+import { LanguageCode, LANGUAGES, useI18n } from '../../i18n';
 
 interface Props {
   household: Household;
@@ -15,8 +16,10 @@ export function GeneralSection({ household, onSaved }: Props) {
   const [autoClose, setAutoClose] = useState(household.auto_close_days !== null);
   const [days, setDays] = useState(String(household.auto_close_days ?? 5));
   const [shield, setShield] = useState(household.shield_costs_from_guests);
+  const [language, setLanguage] = useState<LanguageCode>(household.language as LanguageCode);
   const [saving, setSaving] = useState(false);
   const showMessage = useMessage();
+  const { t } = useI18n();
 
   const timezones = useMemo(() => {
     const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
@@ -32,9 +35,10 @@ export function GeneralSection({ household, onSaved }: Props) {
         currency: currency.toUpperCase(),
         timezone,
         shield_costs_from_guests: shield,
+        language,
         ...(autoClose ? { auto_close_days: Math.max(0, Number(days) || 0) } : { disable_auto_close: true }),
       });
-      showMessage('success', 'Settings saved');
+      showMessage('success', t('general.saved'));
       onSaved();
     } catch (err) {
       showMessage('error', (err as Error).message);
@@ -46,18 +50,18 @@ export function GeneralSection({ household, onSaved }: Props) {
   return (
     <form className="card" onSubmit={submit}>
       <h2 className="card__title" style={{ marginBottom: 14 }}>
-        Household
+        {t('general.household')}
       </h2>
       <div className="form-field">
         <label className="form-label" htmlFor="hh-name">
-          Name
+          {t('common.name')}
         </label>
         <input id="hh-name" className="form-input" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
       <div className="form-grid form-grid--2">
         <div className="form-field">
           <label className="form-label" htmlFor="hh-currency">
-            Currency
+            {t('general.currency')}
           </label>
           <input
             id="hh-currency"
@@ -70,7 +74,7 @@ export function GeneralSection({ household, onSaved }: Props) {
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="hh-tz">
-            Timezone
+            {t('general.timezone')}
           </label>
           <input id="hh-tz" className="form-input" list="tz-list" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
           <datalist id="tz-list">
@@ -78,14 +82,27 @@ export function GeneralSection({ household, onSaved }: Props) {
               <option key={tz} value={tz} />
             ))}
           </datalist>
-          <span className="form-hint">Decides when a new month starts.</span>
+          <span className="form-hint">{t('general.timezoneHint')}</span>
         </div>
       </div>
       <div className="form-field">
-        <span className="form-label">Auto-close months</span>
+        <label className="form-label" htmlFor="hh-lang">
+          {t('general.language')}
+        </label>
+        <select id="hh-lang" className="form-select" value={language} onChange={(e) => setLanguage(e.target.value as LanguageCode)}>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <span className="form-hint">{t('general.languageHint')}</span>
+      </div>
+      <div className="form-field">
+        <span className="form-label">{t('general.autoClose')}</span>
         <label className="checkbox">
           <input type="checkbox" checked={autoClose} onChange={(e) => setAutoClose(e.target.checked)} />
-          Close each month automatically
+          {t('general.autoCloseCheckbox')}
         </label>
         {autoClose && (
           <div className="row" style={{ marginTop: 8 }}>
@@ -99,22 +116,22 @@ export function GeneralSection({ household, onSaved }: Props) {
               value={days}
               onChange={(e) => setDays(e.target.value)}
             />
-            <span className="muted">days after the month ends</span>
+            <span className="muted">{t('general.daysAfterEnd')}</span>
           </div>
         )}
       </div>
       <div className="form-field">
-        <span className="form-label">Privacy</span>
+        <span className="form-label">{t('general.privacy')}</span>
         <label className="checkbox">
           <input type="checkbox" checked={shield} onChange={(e) => setShield(e.target.checked)} />
-          Shield costs from guests
+          {t('general.shield')}
         </label>
         <span className="form-hint">
-          Guests only see the costs and transfers that involve them, their own totals, and no breakdown by category.
+          {t('general.shieldHint')}
         </span>
       </div>
       <button className="button button--primary" disabled={saving}>
-        {saving ? 'Saving...' : 'Save'}
+        {saving ? t('common.saving') : t('common.save')}
       </button>
     </form>
   );

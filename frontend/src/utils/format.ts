@@ -1,20 +1,34 @@
+// Dates, months and money follow the household's interface language (set by the I18nProvider).
+let locale = 'en';
+
+export function setFormatLocale(next: string): void {
+  locale = next;
+}
+
 const formatters = new Map<string, Intl.NumberFormat>();
 
 export function formatMoney(amount: number, currency: string): string {
-  let formatter = formatters.get(currency);
+  const cacheKey = `${locale}|${currency}`;
+  let formatter = formatters.get(cacheKey);
   if (!formatter) {
     try {
-      formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency });
+      formatter = new Intl.NumberFormat(locale, { style: 'currency', currency });
     } catch {
-      formatter = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      formatter = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    formatters.set(currency, formatter);
+    formatters.set(cacheKey, formatter);
   }
   return formatter.format(amount);
 }
 
 export function monthLabel(year: number, month: number, style: 'long' | 'short' = 'long'): string {
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: style, year: 'numeric' });
+  return new Date(year, month - 1, 1).toLocaleDateString(locale, { month: style, year: 'numeric' });
+}
+
+/** A full date (e.g. auto-close day) in the interface language. */
+export function longDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 /** "2026-10" <-> {year, month} */
@@ -49,7 +63,7 @@ export function lastDayOfMonth(year: number, month: number): string {
 /** ISO date "2026-10-28" -> "Oct 28" (no timezone shifts) */
 export function shortDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
 export function addDays(iso: string, days: number): string {
@@ -72,9 +86,3 @@ export function parseAmount(raw: string): number {
   return Number(value);
 }
 
-export const ROLE_LABELS: Record<string, string> = {
-  manager: 'Manager',
-  resident: 'Resident',
-  guest: 'Guest',
-  viewer: 'Viewer',
-};

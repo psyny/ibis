@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react';
+import { useI18n } from '../i18n';
 
 interface ModalProps {
   title: string;
@@ -7,6 +8,7 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children }: ModalProps) {
+  const { t } = useI18n();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -23,7 +25,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="modal__header">
           <h2 className="modal__title">{title}</h2>
-          <button className="icon-button" onClick={onClose} aria-label="Close">
+          <button className="icon-button" onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </div>

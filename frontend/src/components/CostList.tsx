@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import type { Cost, MonthSummary } from '../api/types';
+import { useI18n } from '../i18n';
 import { formatMoney, shortDate } from '../utils/format';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 /** The month's costs: cards on phones, a table on wider screens. Editable rows open the edit page. */
 export function CostList({ householdId, summary, onDelete }: Props) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const names = new Map(summary.members.map((m) => [m.id, m.display_name]));
   const colors = new Map(summary.categories.map((c) => [c.id, c.color]));
   const people = (ids: string[]) => ids.map((id) => names.get(id) || '?').join(', ');
@@ -23,22 +25,22 @@ export function CostList({ householdId, summary, onDelete }: Props) {
       <button
         type="button"
         className="row-delete"
-        aria-label={`Delete ${c.description}`}
+        aria-label={t('costList.deleteAria', { name: c.description })}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onDelete!(c);
         }}
       >
-        Delete
+        {t('common.delete')}
       </button>
     );
 
   if (summary.costs.length === 0) {
     return (
       <div className="state-message">
-        No costs this month.
-        {summary.can_add_cost && <div className="state-message__sub">Tap “Add cost” below to add the first one.</div>}
+        {t('costList.empty')}
+        {summary.can_add_cost && <div className="state-message__sub">{t('costList.emptyHint')}</div>}
       </div>
     );
   }
@@ -61,7 +63,7 @@ export function CostList({ householdId, summary, onDelete }: Props) {
             <>
               <div className="cost-item__title">
                 {c.description}
-                {c.source === 'recurring' && <span className="muted small" title="Fixed cost"> ↻</span>}
+                {c.source === 'recurring' && <span className="muted small" title={t('costList.fixedCost')}> ↻</span>}
               </div>
               <div className="cost-item__amount num">{money(c.amount)}</div>
               <div className="cost-item__meta">
@@ -69,9 +71,9 @@ export function CostList({ householdId, summary, onDelete }: Props) {
                 {category(c)}
                 {deleteButton(c)}
               </div>
-              <div className="cost-item__share num">{money(c.cover_share)} each</div>
+              <div className="cost-item__share num">{t('costList.each', { amount: money(c.cover_share) })}</div>
               <div className="cost-item__people">
-                <span className="muted">Paid:</span> {people(c.payer_ids)} · <span className="muted">Covers:</span>{' '}
+                <span className="muted">{t('costList.paid')}</span> {people(c.payer_ids)} · <span className="muted">{t('costList.covers')}</span>{' '}
                 {people(c.coverer_ids)}
               </div>
             </>
@@ -92,14 +94,14 @@ export function CostList({ householdId, summary, onDelete }: Props) {
         <table className="cost-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Category</th>
-              <th className="num">Total</th>
-              <th>Paid by</th>
-              <th>Covered by</th>
-              <th className="num">Each covers</th>
-              {canDelete && <th aria-label="Actions" />}
+              <th>{t('costList.col.date')}</th>
+              <th>{t('costList.col.description')}</th>
+              <th>{t('costList.col.category')}</th>
+              <th className="num">{t('costList.col.total')}</th>
+              <th>{t('costList.col.paidBy')}</th>
+              <th>{t('costList.col.coveredBy')}</th>
+              <th className="num">{t('costList.col.eachCovers')}</th>
+              {canDelete && <th aria-label={t('costList.col.actions')} />}
             </tr>
           </thead>
           <tbody>
@@ -108,12 +110,12 @@ export function CostList({ householdId, summary, onDelete }: Props) {
                 key={c.id}
                 className={c.can_edit ? 'cost-table__row--editable' : ''}
                 onClick={c.can_edit ? () => navigate(editUrl(c)) : undefined}
-                title={c.can_edit ? 'Edit' : undefined}
+                title={c.can_edit ? t('common.edit') : undefined}
               >
                 <td className="nowrap">{shortDate(c.date)}</td>
                 <td>
                   {c.description}
-                  {c.source === 'recurring' && <span className="muted small" title="Fixed cost"> ↻</span>}
+                  {c.source === 'recurring' && <span className="muted small" title={t('costList.fixedCost')}> ↻</span>}
                 </td>
                 <td>{category(c)}</td>
                 <td className="num">{money(c.amount)}</td>

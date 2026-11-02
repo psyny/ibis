@@ -6,6 +6,7 @@ import { PixPayModal, PixReceiver } from '../components/PixPayModal';
 import { meAsReceiver, memberAsReceiver } from '../components/pixReceivers';
 import { TopBar } from '../components/TopBar';
 import { lastHousehold, useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../i18n';
 import { formatMoney, parseAmount } from '../utils/format';
 
 const ME = 'me';
@@ -13,6 +14,7 @@ const ME = 'me';
 /** Tool: a PIX QR code + copy-and-paste code for any amount, using the same sheet as the split table. */
 export function PixGenPage() {
   const { me } = useAuth();
+  const { t } = useI18n();
   const householdId = lastHousehold() || me?.households[0]?.id;
   const household = me?.households.find((h) => h.id === householdId);
 
@@ -42,9 +44,9 @@ export function PixGenPage() {
 
   const generate = (e: FormEvent) => {
     e.preventDefault();
-    if (!(amount > 0)) return setError('Enter an amount greater than zero');
-    if (Math.round(amount * 100) / 100 !== amount) return setError('Use at most 2 decimals');
-    if (!receiver) return setError('Pick who receives the money');
+    if (!(amount > 0)) return setError(t('validation.amountPositive'));
+    if (Math.round(amount * 100) / 100 !== amount) return setError(t('validation.twoDecimals'));
+    if (!receiver) return setError(t('pixgen.pickReceiver'));
     setError('');
     setShown({ receiver, amount });
   };
@@ -56,16 +58,16 @@ export function PixGenPage() {
         <div className="page__inner page__inner--narrow">
           <div>
             <Link to="/tools" className="muted small">
-              ← Tools
+              ← {t('tools.title')}
             </Link>
-            <h1 className="page-title">PIX code generator</h1>
-            <p className="page-description">Create a PIX QR code and copy-and-paste code for any amount.</p>
+            <h1 className="page-title">{t('pixgen.title')}</h1>
+            <p className="page-description">{t('pixgen.description')}</p>
           </div>
 
           <form className="card" onSubmit={generate} noValidate>
             <div className="form-field">
               <label className="form-label" htmlFor="pix-amount">
-                Amount (BRL)
+                {t('cost.amount', { currency: 'BRL' })}
               </label>
               <input
                 id="pix-amount"
@@ -81,14 +83,14 @@ export function PixGenPage() {
 
             <div className="form-field">
               <label className="form-label" htmlFor="pix-receiver">
-                Who receives
+                {t('pixgen.receiver')}
               </label>
               <select id="pix-receiver" className="form-select" value={receiverId} onChange={(e) => setReceiverId(e.target.value)}>
-                <option value={ME}>Me ({me?.display_name})</option>
+                <option value={ME}>{t('pixgen.me', { name: me?.display_name || '' })}</option>
                 {members.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.display_name}
-                    {m.bank_info_type === 'pix' && m.bank_info ? '' : ' (no PIX key)'}
+                    {m.bank_info_type === 'pix' && m.bank_info ? '' : ` ${t('pixgen.noKeyMark')}`}
                   </option>
                 ))}
               </select>
@@ -96,10 +98,10 @@ export function PixGenPage() {
                 <span className="form-hint">
                   {receiverId === ME ? (
                     <>
-                      You don't have a PIX key yet. <Link to="/account">Add it in My account</Link>.
+                      {t('pixgen.noOwnKey')} <Link to="/account">{t('pixgen.addInAccount')}</Link>
                     </>
                   ) : (
-                    'This person has no PIX key: their bank info will be shown instead.'
+                    t('pixgen.noKeyOther')
                   )}
                 </span>
               )}
@@ -111,7 +113,7 @@ export function PixGenPage() {
               </p>
             )}
             <button className="button button--primary button--large button--block">
-              Generate PIX{amount > 0 ? ` for ${formatMoney(amount, 'BRL')}` : ''}
+              {amount > 0 ? t('pixgen.generateFor', { amount: formatMoney(amount, 'BRL') }) : t('pixgen.generate')}
             </button>
           </form>
         </div>
@@ -122,7 +124,7 @@ export function PixGenPage() {
           receiver={shown.receiver}
           amount={shown.amount}
           currency="BRL"
-          subtitle={`Pay ${shown.receiver.name}`}
+          subtitle={t('pay.title', { name: shown.receiver.name })}
           onClose={() => setShown(null)}
         />
       )}

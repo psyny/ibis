@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useI18n } from '../i18n';
 
 interface TopBarProps {
   householdId?: string;
@@ -15,6 +16,7 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +36,7 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
 
   return (
     <header className="topbar">
-      <Link to={householdId ? `/h/${householdId}` : '/'} className="topbar__brand" title="Monthly costs">
+      <Link to={householdId ? `/h/${householdId}` : '/'} className="topbar__brand" title={t('menu.monthlyCosts')}>
         <img src="/favicon.svg" width={26} height={26} alt="" />
         Ibis
         {householdName && <span className="topbar__household">· {householdName}</span>}
@@ -42,7 +44,7 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
       <div className="topbar__spacer" />
       {children}
       <div className="menu" ref={menuRef}>
-        <button className="icon-button" onClick={() => setOpen((v) => !v)} aria-label="Menu" aria-expanded={open}>
+        <button className="icon-button" onClick={() => setOpen((v) => !v)} aria-label={t('menu.aria')} aria-expanded={open}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="4" y1="7" x2="20" y2="7" />
             <line x1="4" y1="12" x2="20" y2="12" />
@@ -51,32 +53,32 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
         </button>
         {open && (
           <nav className="menu__panel">
-            <div className="menu__label">{me ? `Signed in as ${me.display_name}` : 'Not signed in'}</div>
+            <div className="menu__label">{me ? t('menu.signedInAs', { name: me.display_name }) : t('menu.notSignedIn')}</div>
             {householdId && (
               <button className="menu__item" onClick={() => go(`/h/${householdId}`)}>
-                Monthly costs
+                {t('menu.monthlyCosts')}
               </button>
             )}
             {householdId && canManage && (
               <button className="menu__item" onClick={() => go(`/h/${householdId}/settings`)}>
-                Household settings
+                {t('menu.householdSettings')}
               </button>
             )}
             <button className="menu__item" onClick={() => go('/account')}>
-              My account
+              {t('menu.myAccount')}
             </button>
             <button className="menu__item" onClick={() => go('/tools')}>
-              Tools
+              {t('menu.tools')}
             </button>
             {me?.is_admin && (
               <button className="menu__item" onClick={() => go('/admin')}>
-                Admin
+                {t('menu.admin')}
               </button>
             )}
             {otherHouseholds.length > 0 && (
               <>
                 <div className="menu__separator" />
-                <div className="menu__label">Switch household</div>
+                <div className="menu__label">{t('menu.switchHousehold')}</div>
                 {otherHouseholds.map((h) => (
                   <button key={h.id} className="menu__item" onClick={() => go(`/h/${h.id}`)}>
                     {h.name}
@@ -87,11 +89,11 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
             <div className="menu__separator" />
             {me ? (
               <button className="menu__item" onClick={signOut}>
-                Sign out
+                {t('menu.signOut')}
               </button>
             ) : (
               <button className="menu__item" onClick={() => go('/login')}>
-                Sign in
+                {t('menu.signIn')}
               </button>
             )}
           </nav>

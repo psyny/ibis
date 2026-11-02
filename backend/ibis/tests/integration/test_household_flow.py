@@ -118,6 +118,20 @@ def test_cost_list_is_oldest_first(client, admin, login):
         assert descriptions == ["Oldest", "Middle", "Same day, added later"]
 
 
+def test_household_language(client, admin, login):
+    hid, people = _setup_household(client, admin, login)
+    mia = people["mia"]["headers"]
+    assert client.get(f"/api/households/{hid}", headers=mia).json()["language"] == "en"  # default
+    assert client.put(f"/api/households/{hid}", json={"language": "pt-BR"}, headers=people["rui"]["headers"]).status_code == 403
+    assert client.put(f"/api/households/{hid}", json={"language": "pt-BR"}, headers=mia).json()["language"] == "pt-BR"
+    assert client.put(f"/api/households/{hid}", json={"language": "klingon"}, headers=mia).status_code == 422
+    # Shown in /me so pages outside a household can use it
+    me = client.get("/api/auth/me", headers=people["gil"]["headers"]).json()
+    assert me["households"][0]["language"] == "pt-BR"
+    created = client.post("/api/admin/households", json={"name": "Haus", "language": "de"}, headers=admin).json()
+    assert created["language"] == "de"
+
+
 def test_shield_costs_from_guests(client, admin, login):
     hid, people = _setup_household(client, admin, login)
     mia, gil = people["mia"]["headers"], people["gil"]["headers"]

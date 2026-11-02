@@ -16,6 +16,8 @@ class Household(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    # Interface language for everyone in the household (see domain/languages.py)
+    language: Mapped[str] = mapped_column(String(10), nullable=False, default="en", server_default="en")
     # Days after a month ends before it closes automatically. None = never.
     auto_close_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     # Guests only see costs, transfers and totals that involve them (no category breakdown).

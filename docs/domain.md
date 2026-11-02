@@ -24,6 +24,17 @@ The whole policy is in `backend/ibis/domain/roles.py` (`MIN_ROLE_ADD_COST`, `PAR
 - **Disabled** members can't sign in or be picked for new costs, but stay in old costs, balances
   and statistics. A household always keeps at least one active manager.
 
+## Languages
+
+Each household has an interface language (Settings → General, or chosen when an admin creates it;
+default English): English, Português (Brasil), Deutsch, Français, Italiano, 中文, 日本語, 한국어, हिन्दी.
+Everything on screen follows it, including month names, dates and money formats. Pages outside a
+household (login, My account, Tools, Admin) use the last household opened.
+
+Translations live in `frontend/src/i18n/locales/` (one file per language; `en.ts` is the source).
+TypeScript fails the build if a language misses a key, and `i18n.test.ts` checks every translation
+keeps the `{placeholders}`. Error messages coming from the server are still English.
+
 ## Staying signed in
 
 Sessions slide: a sign-in token lasts 90 days (`JWT_EXPIRATION_HOURS`) and the API sends a fresh one

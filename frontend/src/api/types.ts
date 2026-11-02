@@ -21,6 +21,7 @@ export interface MyHousehold {
   id: string;
   name: string;
   currency: string;
+  language: string;
   role: Role;
   member_id: string | null;
 }
@@ -37,6 +38,7 @@ export interface Household {
   timezone: string;
   auto_close_days: number | null;
   shield_costs_from_guests: boolean;
+  language: string;
   today: string;
   my_role: Role;
   my_member_id: string | null;
@@ -179,5 +181,6 @@ export interface AdminHousehold {
   currency: string;
   timezone: string;
   auto_close_days: number | null;
+  language: string;
   member_count: number;
 }

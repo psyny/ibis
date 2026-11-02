@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { lastHousehold, useAuth } from '../contexts/AuthContext';
+import { MessageKey, useI18n } from '../i18n';
 
 interface Tool {
   path: string;
   icon: string;
-  title: string;
-  description: string;
+  title: MessageKey;
+  description: MessageKey;
 }
 
 /** Add new tools here: each one becomes a card on /tools. */
@@ -14,13 +15,14 @@ const TOOLS: Tool[] = [
   {
     path: '/tools/pixgen',
     icon: '⚡',
-    title: 'PIX code generator',
-    description: 'Create a PIX QR code and copy-and-paste code for any amount.',
+    title: 'pixgen.title',
+    description: 'pixgen.description',
   },
 ];
 
 export function ToolsPage() {
   const { me } = useAuth();
+  const { t } = useI18n();
   const householdId = lastHousehold() || me?.households[0]?.id;
   const household = me?.households.find((h) => h.id === householdId);
 
@@ -30,8 +32,8 @@ export function ToolsPage() {
       <main className="page">
         <div className="page__inner">
           <div>
-            <h1 className="page-title">Tools</h1>
-            <p className="page-description">Handy extras for your household.</p>
+            <h1 className="page-title">{t('tools.title')}</h1>
+            <p className="page-description">{t('tools.description')}</p>
           </div>
           <div className="tools-grid">
             {TOOLS.map((tool) => (
@@ -39,8 +41,8 @@ export function ToolsPage() {
                 <span className="tool-card__icon" aria-hidden>
                   {tool.icon}
                 </span>
-                <span className="tool-card__title">{tool.title}</span>
-                <span className="tool-card__description">{tool.description}</span>
+                <span className="tool-card__title">{t(tool.title)}</span>
+                <span className="tool-card__description">{t(tool.description)}</span>
               </Link>
             ))}
           </div>

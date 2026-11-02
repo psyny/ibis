@@ -3,7 +3,9 @@ import { PixSVG } from 'react-qrcode-pix';
 import type { BankInfoType } from '../api/types';
 import { useMessage } from '../contexts/MessageContext';
 import { formatMoney } from '../utils/format';
-import { buildPix } from '../utils/pix';
+import { useI18n } from '../i18n';
+import { buildPix, PixKeyError } from '../utils/pix';
+import { pixErrorText } from './BankInfoFields';
 import { Modal } from './Modal';
 
 /** Who gets the money. Works for a household member or for the signed-in user. */
@@ -33,6 +35,7 @@ interface Props {
  */
 export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: Props) {
   const showMessage = useMessage();
+  const { t } = useI18n();
   const [uploadedQr, setUploadedQr] = useState<string | null>(receiver.uploadedQr ?? null);
 
   const hasPixKey = receiver.bankInfoType === 'pix' && !!receiver.bankInfo;
@@ -43,9 +46,10 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
     try {
       return { data: buildPix(receiver.bankInfo!, receiver.name, amount), error: '' };
     } catch (e) {
-      return { data: null, error: (e as Error).message };
+      const message = e instanceof PixKeyError ? pixErrorText(t, e.code, e.params) : (e as Error).message;
+      return { data: null, error: message };
     }
-  }, [hasPixKey, isBRL, receiver.bankInfo, receiver.name, amount]);
+  }, [hasPixKey, isBRL, receiver.bankInfo, receiver.name, amount, t]);
 
   // Fall back to the image the person uploaded when we can't generate a PIX code
   const { loadUploadedQr } = receiver;
@@ -58,17 +62,17 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
       .catch(() => setUploadedQr(null));
   }, [pix, uploadedQr, loadUploadedQr]);
 
-  const copy = async (text: string, label: string) => {
+  const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      showMessage('success', `${label} copied`);
+      showMessage('success', t('common.copied'));
     } catch {
-      showMessage('error', 'Could not copy');
+      showMessage('error', t('common.copyFailed'));
     }
   };
 
   return (
-    <Modal title={`Pay ${receiver.name}`} onClose={onClose}>
+    <Modal title={t('pay.title', { name: receiver.name })} onClose={onClose}>
       <p className="pay-amount num">{formatMoney(amount, currency)}</p>
       {subtitle && (
         <p className="muted small" style={{ textAlign: 'center', marginBottom: 12 }}>
@@ -93,18 +97,18 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
             />
           </div>
           <p className="muted small" style={{ textAlign: 'center', margin: '10px 0' }}>
-            Scan with your bank app, or copy the PIX code and paste it in “Pix Copia e Cola”.
+            {t('pay.scanHint')}
           </p>
           <div className="row" style={{ justifyContent: 'center' }}>
-            <button className="button button--primary" onClick={() => copy(pix.data!.code, 'PIX code')}>
-              Copy PIX code
+            <button className="button button--primary" onClick={() => copy(pix.data!.code)}>
+              {t('pay.copyCode')}
             </button>
-            <button className="button button--secondary" onClick={() => copy(pix.data!.pixkey, 'PIX key')}>
-              Copy key
+            <button className="button button--secondary" onClick={() => copy(pix.data!.pixkey)}>
+              {t('pay.copyKey')}
             </button>
           </div>
           <p className="muted small" style={{ textAlign: 'center', marginTop: 10, wordBreak: 'break-all' }}>
-            Key: {pix.data.pixkey}
+            {t('pay.key', { key: pix.data.pixkey })}
           </p>
         </>
       )}
@@ -113,25 +117,25 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
         <div className="contact-list">
           {pix?.error && <div className="banner banner--warning">{pix.error}</div>}
           {hasPixKey && !isBRL && (
-            <div className="banner">PIX QR codes need the household currency to be BRL. Here is the key:</div>
+            <div className="banner">{t('pay.needsBRL')}</div>
           )}
           {receiver.bankInfo ? (
             <div className="contact-row">
               <div className="grow">
-                <div className="contact-row__label">{receiver.bankInfoType === 'pix' ? 'PIX key' : 'Bank info'}</div>
+                <div className="contact-row__label">{receiver.bankInfoType === 'pix' ? t('pix.keyLabel') : t('bank.label')}</div>
                 <div className="contact-row__value">{receiver.bankInfo}</div>
               </div>
-              <button className="button button--secondary button--small" onClick={() => copy(receiver.bankInfo!, 'Bank info')}>
-                Copy
+              <button className="button button--secondary button--small" onClick={() => copy(receiver.bankInfo!)}>
+                {t('common.copy')}
               </button>
             </div>
           ) : (
-            !uploadedQr && <p className="muted">{receiver.name} hasn't added bank info yet.</p>
+            !uploadedQr && <p className="muted">{t('pay.noBankInfo', { name: receiver.name })}</p>
           )}
           {uploadedQr && (
             <div>
-              <div className="contact-row__label">QR code from {receiver.name}</div>
-              <img className="qr-image" src={uploadedQr} alt={`Payment QR code of ${receiver.name}`} />
+              <div className="contact-row__label">{t('pay.qrFrom', { name: receiver.name })}</div>
+              <img className="qr-image" src={uploadedQr} alt={t('contact.qrAlt', { name: receiver.name })} />
             </div>
           )}
         </div>

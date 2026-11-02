@@ -4,24 +4,61 @@
  *
  * Canonical forms: email (lower case), CPF (11 digits), CNPJ (14 digits),
  * phone (+55 + area code + number), random key (lower-case UUID 8-4-4-4-12).
+ *
+ * Problems come back as a `code` + `params` so the screen can show them in the
+ * household's language (keys "pix.error.<code>"); `error` is the English text.
  */
 
 export type PixKeyKind = 'email' | 'cpf' | 'cnpj' | 'phone' | 'random';
 
-export type PixKeyResult =
-  | { ok: true; kind: PixKeyKind; key: string; label: string }
-  | { ok: false; error: string };
+export type PixKeyErrorCode =
+  | 'empty'
+  | 'badEmail'
+  | 'emailTooLong'
+  | 'notAKey'
+  | 'notBrazilianPhone'
+  | 'phoneDigits'
+  | 'badAreaCode'
+  | 'mobileStartsWith9'
+  | 'badCpf'
+  | 'badCnpj'
+  | 'checkNumber'
+  | 'wrongLength';
 
-export const PIX_KIND_LABELS: Record<PixKeyKind, string> = {
-  email: 'Email',
-  cpf: 'CPF',
-  cnpj: 'CNPJ',
-  phone: 'Phone',
-  random: 'Random key',
+export type PixKeyParams = Record<string, string | number>;
+
+export type PixKeyResult =
+  | { ok: true; kind: PixKeyKind; key: string }
+  | { ok: false; code: PixKeyErrorCode; params: PixKeyParams; error: string };
+
+/** English messages (the translated ones live in i18n/locales as "pix.error.<code>"). */
+const ENGLISH: Record<PixKeyErrorCode, (p: PixKeyParams) => string> = {
+  empty: () => 'Enter a PIX key.',
+  badEmail: (p) => `“${p.text}” doesn't look like a valid email.`,
+  emailTooLong: () => 'Email keys can have at most 77 characters.',
+  notAKey: (p) => `“${p.text}” is not a PIX key. Use an email, CPF, CNPJ, phone number or random key.`,
+  notBrazilianPhone: () => 'Only Brazilian phone numbers (+55) can be PIX keys.',
+  phoneDigits: (p) =>
+    `This looks like a phone number, but it has ${p.count} digit${p.count === 1 ? '' : 's'} after the area code. Brazilian numbers have 9 (mobile) or 8 (landline), e.g. +55 21 99381-5159.`,
+  badAreaCode: (p) => `“${p.code}” is not a valid area code (DDD).`,
+  mobileStartsWith9: () => 'Mobile numbers with 9 digits start with 9 (e.g. 99381-5159).',
+  badCpf: () => 'This looks like a CPF, but its check digits are wrong. Please check the number.',
+  badCnpj: () => 'This looks like a CNPJ, but its check digits are wrong. Please check the number.',
+  checkNumber: () => 'Please check the number.',
+  wrongLength: (p) =>
+    `“${p.text}” has ${p.count} digits: that is not a CPF (11), CNPJ (14) or phone number (area code + 8 or 9 digits).`,
 };
 
-const ok = (kind: PixKeyKind, key: string): PixKeyResult => ({ ok: true, kind, key, label: PIX_KIND_LABELS[kind] });
-const fail = (error: string): PixKeyResult => ({ ok: false, error });
+type Problem = { code: PixKeyErrorCode; params: PixKeyParams };
+
+const ok = (kind: PixKeyKind, key: string): PixKeyResult => ({ ok: true, kind, key });
+const fail = (code: PixKeyErrorCode, params: PixKeyParams = {}): PixKeyResult => ({
+  ok: false,
+  code,
+  params,
+  error: ENGLISH[code](params),
+});
+const failWith = (problem: Problem): PixKeyResult => fail(problem.code, problem.params);
 
 export function isValidCpf(digits: string): boolean {
   if (!/^\d{11}$/.test(digits) || /^(\d)\1{10}$/.test(digits)) return false;
@@ -49,26 +86,25 @@ export function isValidCnpj(digits: string): boolean {
  * Checks a Brazilian number without the country code: area code (2 digits, 11-99)
  * plus an 8-digit landline or a 9-digit mobile starting with 9.
  */
-function checkNationalPhone(national: string): string | null {
+function checkNationalPhone(national: string): Problem | null {
   if (national.length < 10 || national.length > 11) {
-    const after = national.length - 2;
-    return `This looks like a phone number, but it has ${after} digit${after === 1 ? '' : 's'} after the area code. Brazilian numbers have 9 (mobile) or 8 (landline), e.g. +55 21 99381-5159.`;
+    return { code: 'phoneDigits', params: { count: national.length - 2 } };
   }
-  if (!/^[1-9][1-9]/.test(national)) return `“${national.slice(0, 2)}” is not a valid area code (DDD).`;
-  if (national.length === 11 && national[2] !== '9') return 'Mobile numbers with 9 digits start with 9 (e.g. 99381-5159).';
+  if (!/^[1-9][1-9]/.test(national)) return { code: 'badAreaCode', params: { code: national.slice(0, 2) } };
+  if (national.length === 11 && national[2] !== '9') return { code: 'mobileStartsWith9', params: {} };
   return null;
 }
 
 export function parsePixKey(raw: string): PixKeyResult {
   // Drop invisible characters (copy-pasting from apps often brings them) and outer spaces
   const text = raw.replace(/[​-‍﻿ ]/g, ' ').trim();
-  if (!text) return fail('Enter a PIX key.');
+  if (!text) return fail('empty');
 
   // Email
   if (text.includes('@')) {
     const email = text.replace(/\s+/g, '').replace(/^mailto:/i, '').toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(`“${text}” doesn't look like a valid email.`);
-    if (email.length > 77) return fail('Email keys can have at most 77 characters.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('badEmail', { text });
+    if (email.length > 77) return fail('emailTooLong');
     return ok('email', email);
   }
 
@@ -80,33 +116,30 @@ export function parsePixKey(raw: string): PixKeyResult {
   }
 
   // Everything else must be numbers with common separators
-  if (!/^\+?[\d\s.\-/()]+$/.test(text)) {
-    return fail(`“${text}” is not a PIX key. Use an email, CPF, CNPJ, phone number or random key.`);
-  }
+  if (!/^\+?[\d\s.\-/()]+$/.test(text)) return fail('notAKey', { text });
   const hasPlus = text.startsWith('+');
   const looksLikePhone = hasPlus || /[()]/.test(text);
   const looksLikeDocument = /[./]/.test(text);
   let digits = text.replace(/\D/g, '');
 
   if (hasPlus) {
-    if (!digits.startsWith('55')) return fail('Only Brazilian phone numbers (+55) can be PIX keys.');
+    if (!digits.startsWith('55')) return fail('notBrazilianPhone');
     const problem = checkNationalPhone(digits.slice(2));
-    return problem ? fail(problem) : ok('phone', `+${digits}`);
+    return problem ? failWith(problem) : ok('phone', `+${digits}`);
   }
 
   if (digits.length === 14) {
     if (isValidCnpj(digits)) return ok('cnpj', digits);
     if (digits.startsWith('55') && !looksLikeDocument) {
-      return fail(checkNationalPhone(digits.slice(2)) || 'Please check the number.');
+      const problem = checkNationalPhone(digits.slice(2));
+      return problem ? failWith(problem) : fail('checkNumber');
     }
-    return fail('This looks like a CNPJ, but its check digits are wrong. Please check the number.');
+    return fail('badCnpj');
   }
 
   if (digits.length === 11 && !looksLikePhone) {
     if (isValidCpf(digits)) return ok('cpf', digits);
-    if (looksLikeDocument || checkNationalPhone(digits) !== null) {
-      return fail('This looks like a CPF, but its check digits are wrong. Please check the number.');
-    }
+    if (looksLikeDocument || checkNationalPhone(digits) !== null) return fail('badCpf');
     return ok('phone', `+55${digits}`); // e.g. "21993815159": a mobile number without +55
   }
 
@@ -115,14 +148,12 @@ export function parsePixKey(raw: string): PixKeyResult {
   if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
   if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
     const problem = checkNationalPhone(digits.slice(2));
-    return problem ? fail(problem) : ok('phone', `+${digits}`);
+    return problem ? failWith(problem) : ok('phone', `+${digits}`);
   }
   if (looksLikePhone || digits.length === 10 || digits.length === 11) {
     const problem = checkNationalPhone(digits);
-    return problem ? fail(problem) : ok('phone', `+55${digits}`);
+    return problem ? failWith(problem) : ok('phone', `+55${digits}`);
   }
 
-  return fail(
-    `“${text}” has ${digits.length} digits: that is not a CPF (11), CNPJ (14) or phone number (area code + 8 or 9 digits).`,
-  );
+  return fail('wrongLength', { text, count: digits.length });
 }

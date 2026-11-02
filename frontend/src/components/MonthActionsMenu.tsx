@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MonthInfo } from '../api/types';
+import { useI18n } from '../i18n';
 import { monthLabel } from '../utils/format';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 export function MonthActionsMenu({ month, onClose, onReopen, onAddFixedCosts }: Props) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const label = monthLabel(month.year, month.month);
   const isOpen = month.status === 'open';
@@ -53,9 +55,9 @@ export function MonthActionsMenu({ month, onClose, onReopen, onAddFixedCosts }: 
       <button
         className="icon-button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Actions for ${label}`}
+        aria-label={t('monthMenu.aria', { month: label })}
         aria-expanded={open}
-        title="Month actions"
+        title={t('monthMenu.title')}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -68,22 +70,22 @@ export function MonthActionsMenu({ month, onClose, onReopen, onAddFixedCosts }: 
       {open && (
         <nav className="menu__panel">
           <div className="menu__label">
-            {label} · {isOpen ? 'open' : 'closed'}
+            {label} · {isOpen ? t('month.open') : t('month.closed')}
           </div>
           {isOpen ? (
             <>
               <button className="menu__item" onClick={addFixed} disabled={busy}>
-                {busy ? 'Adding fixed costs...' : 'Add fixed costs'}
-                <span className="menu__hint">Adds missing ones, never duplicates</span>
+                {busy ? t('monthMenu.addingFixed') : t('monthMenu.addFixed')}
+                <span className="menu__hint">{t('monthMenu.addFixedHint')}</span>
               </button>
               <button className="menu__item" onClick={() => run(onClose)}>
-                Close month
-                <span className="menu__hint">No more cost changes</span>
+                {t('monthMenu.close')}
+                <span className="menu__hint">{t('monthMenu.closeHint')}</span>
               </button>
             </>
           ) : (
             <button className="menu__item" onClick={() => run(onReopen)}>
-              Reopen month
+              {t('monthMenu.reopen')}
             </button>
           )}
         </nav>
