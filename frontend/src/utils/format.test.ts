@@ -1,4 +1,4 @@
-import { addDays, monthKey, parseAmount, parseMonthKey, shiftMonth } from './format';
+import { addDays, lastDayOfMonth, monthKey, monthOfDate, parseAmount, parseMonthKey, shiftMonth } from './format';
 
 describe('parseAmount', () => {
   it('accepts dot and comma decimals', () => {
@@ -19,6 +19,13 @@ describe('months', () => {
   it('round-trips keys', () => {
     expect(parseMonthKey(monthKey(2026, 3))).toEqual({ year: 2026, month: 3 });
     expect(parseMonthKey('2026-13')).toBeNull();
+  });
+  it('finds the last day of a month', () => {
+    expect(lastDayOfMonth(2026, 2)).toBe('2026-02-28');
+    expect(lastDayOfMonth(2028, 2)).toBe('2028-02-29');
+    expect(lastDayOfMonth(2026, 10)).toBe('2026-10-31');
+    expect(lastDayOfMonth(2026, 12)).toBe('2026-12-31');
+    expect(monthOfDate('2026-11-02')).toEqual({ year: 2026, month: 11 });
   });
   it('adds days', () => {
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28');

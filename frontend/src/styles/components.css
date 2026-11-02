@@ -78,6 +78,27 @@
   color: var(--text-primary);
 }
 
+/* Primary action that needs attention (e.g. adding to a month other than the current one) */
+.button--warning {
+  background: var(--warning);
+  color: #1a1400;
+  font-weight: 600;
+}
+
+.button--warning:hover:not(:disabled) {
+  background: #ca9a06;
+}
+
+.month-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--warning);
+}
+
 .button--danger {
   background: transparent;
   color: var(--danger);

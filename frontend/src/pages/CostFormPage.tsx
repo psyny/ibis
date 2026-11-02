@@ -1,12 +1,12 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { createCost, deleteCost, getCost, listCategories, listMembers, listPresets, updateCost } from '../api/households';
-import type { Category, Cost, Member, Preset } from '../api/types';
+import { createCost, deleteCost, getCost, listCategories, listMembers, listMonths, listPresets, updateCost } from '../api/households';
+import type { Category, Cost, Member, MonthInfo, Preset } from '../api/types';
 import { PersonChips } from '../components/PersonChips';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
-import { addDays, formatMoney, monthKey, parseAmount } from '../utils/format';
+import { addDays, formatMoney, lastDayOfMonth, monthKey, monthLabel, monthOfDate, parseAmount, shiftMonth } from '../utils/format';
 
 const isResident = (m: Member) => m.role === 'manager' || m.role === 'resident';
 
@@ -37,6 +37,7 @@ export function CostFormPage() {
   const [coverers, setCoverers] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [autoPickedLastMonth, setAutoPickedLastMonth] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
 
   // Load lists (and the cost when editing), then fill in defaults once
@@ -48,8 +49,9 @@ export function CostFormPage() {
       listCategories(householdId, isEdit),
       listPresets(householdId),
       costId ? getCost(householdId, costId) : Promise.resolve(null),
+      costId ? Promise.resolve([] as MonthInfo[]) : listMonths(householdId).catch(() => [] as MonthInfo[]),
     ])
-      .then(([memberList, categoryList, presetList, cost]) => {
+      .then(([memberList, categoryList, presetList, cost, months]) => {
         if (cancelled) return;
         setMembers(memberList);
         setCategories(categoryList);
@@ -64,7 +66,20 @@ export function CostFormPage() {
           setCoverers(cost.coverer_ids);
         } else {
           const requested = params.get('date');
-          setDate(requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : household.today);
+          if (requested && /^\d{4}-\d{2}-\d{2}$/.test(requested)) {
+            setDate(requested);
+          } else {
+            // During month transitions costs usually belong to last month: use it while it's still open
+            const cur = monthOfDate(household.today);
+            const prev = shiftMonth(cur.year, cur.month, -1);
+            const prevOpen = months.some((m) => m.year === prev.year && m.month === prev.month && m.status === 'open');
+            if (prevOpen) {
+              setDate(lastDayOfMonth(prev.year, prev.month));
+              setAutoPickedLastMonth(true);
+            } else {
+              setDate(household.today);
+            }
+          }
           const me = memberList.find((m) => m.id === household.my_member_id && m.is_participant);
           setPayers(me ? [me.id] : []);
           setCoverers(memberList.filter((m) => m.is_active && isResident(m)).map((m) => m.id));
@@ -94,6 +109,15 @@ export function CostFormPage() {
     const list = text ? presets.filter((p) => p.name.toLowerCase().includes(text) && p.name.toLowerCase() !== text) : presets;
     return new Set(list.map((p) => p.id));
   }, [presets, description]);
+
+  // Is the cost going into a month other than the current one? (drives the warning + yellow button)
+  const todayMonth = household ? monthOfDate(household.today) : null;
+  const dateMonth = date ? monthOfDate(date) : null;
+  const otherMonth = !!todayMonth && !!dateMonth && (todayMonth.year !== dateMonth.year || todayMonth.month !== dateMonth.month);
+  const currentMonthLabel = todayMonth ? monthLabel(todayMonth.year, todayMonth.month) : '';
+  const otherMonthLabel = dateMonth ? monthLabel(dateMonth.year, dateMonth.month) : '';
+  const lastMonth = todayMonth ? shiftMonth(todayMonth.year, todayMonth.month, -1) : null;
+  const autoMonthKey = lastMonth ? monthKey(lastMonth.year, lastMonth.month) : '';
 
   const amount = parseAmount(amountText);
   const currency = household?.currency || 'USD';
@@ -306,6 +330,14 @@ export function CostFormPage() {
                 Yesterday
               </button>
             </div>
+            {otherMonth && (
+              <p className="month-warning" role="status">
+                <span aria-hidden>⚠</span>
+                {autoPickedLastMonth && date.slice(0, 7) === autoMonthKey
+                  ? `${otherMonthLabel} isn't closed yet, so this cost goes there by default. Change the date if it belongs to ${currentMonthLabel}.`
+                  : `This cost goes to ${otherMonthLabel}, not the current month (${currentMonthLabel}).`}
+              </p>
+            )}
           </div>
         </section>
 
@@ -344,11 +376,16 @@ export function CostFormPage() {
             </Link>
           ) : (
             <button type="button" className="button button--secondary button--large" onClick={() => save(true)} disabled={saving}>
-              Save & add another
+              Add and continue
             </button>
           )}
-          <button type="submit" className="button button--primary button--large" disabled={saving}>
-            {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Save cost'}
+          <button
+            type="submit"
+            className={`button button--large ${!isEdit && otherMonth ? 'button--warning' : 'button--primary'}`}
+            disabled={saving}
+            title={!isEdit && otherMonth ? `Adds to ${otherMonthLabel}, not the current month (${currentMonthLabel})` : undefined}
+          >
+            {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Add and close'}
           </button>
         </div>
 

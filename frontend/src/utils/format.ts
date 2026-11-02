@@ -35,6 +35,17 @@ export function shiftMonth(year: number, month: number, delta: number): { year: 
   return { year: Math.floor(index / 12), month: (index % 12) + 1 };
 }
 
+/** ISO date "2026-10-28" -> { year: 2026, month: 10 } */
+export function monthOfDate(iso: string): { year: number; month: number } {
+  return { year: Number(iso.slice(0, 4)), month: Number(iso.slice(5, 7)) };
+}
+
+/** Last day of a month as an ISO date, e.g. (2026, 2) -> "2026-02-28" */
+export function lastDayOfMonth(year: number, month: number): string {
+  const day = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /** ISO date "2026-10-28" -> "Oct 28" (no timezone shifts) */
 export function shortDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
