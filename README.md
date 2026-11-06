@@ -36,18 +36,19 @@ ibis/
 
 ## Quick start on Windows (Docker Desktop)
 
-Double-click (or run from a terminal) in the `ibis` folder:
+`make.bat` is the Windows counterpart of the Makefile. From the `ibis` folder (`.\make.bat` in PowerShell):
 
-| Script | What it does |
-|--------|--------------|
-| `start.bat` | Builds and starts Postgres + API + frontend, waits until ready, opens http://localhost:3000 |
-| `stop.bat` | Stops everything (data is kept) |
-| `status.bat` | Shows which containers are running |
-| `logs.bat` | Follows logs (`logs.bat backend-api` for one service) |
-| `reset-db.bat` | Deletes all local data (asks you to type RESET) |
-| `prod-local.bat` | Production-like build on http://localhost:8080 (`prod-local.bat stop` to stop) |
+| Command | What it does |
+|---------|--------------|
+| `make.bat up` | Builds and starts Postgres + API + frontend, waits until ready, opens http://localhost:3000 (`--no-browser` to skip) |
+| `make.bat down` | Stops everything (data is kept) |
+| `make.bat status` | Shows which containers are running |
+| `make.bat logs [service]` | Follows logs (`make.bat logs backend-api` for one service) |
+| `make.bat reset-db` | Deletes all local data (asks you to type RESET) |
+| `make.bat prod-local` | Production-like build on http://localhost:8080 (`make.bat prod-local-down` to stop) |
+| `make.bat help` | Lists every target, including tests and builds |
 
-The scripts start Docker Desktop if it isn't running.
+It starts Docker Desktop if it isn't running.
 
 ## Quick start (Docker)
 

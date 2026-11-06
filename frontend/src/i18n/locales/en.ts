@@ -113,6 +113,8 @@ export const en = {
   'split.personTitle': 'See contact and payment info',
   'split.unknown': 'Unknown',
   'split.hint': 'Tap an amount to pay it with PIX. Tap a name for contact info.',
+  'split.notClosedTitle': 'Month not closed yet',
+  'split.notClosedBody': '{month} is still open, so amounts can still change. Payment details will be available once the month is closed.',
   'split.showDetails': 'Show who paid and covered what',
   'split.hideDetails': 'Hide who paid and covered what',
   'split.col.person': 'Person',

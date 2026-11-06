@@ -33,6 +33,6 @@ make be-tests-postgres   # same tests against the Docker Postgres test DB
 make fe-build fe-tests   # frontend typecheck/build + unit tests
 ```
 
-On Windows, `start.bat` / `stop.bat` / `status.bat` / `logs.bat` / `reset-db.bat` wrap the Docker commands. `reset-db.bat` and `make clean` delete local data.
+On Windows, `make.bat <target>` has the same targets (`make.bat help` lists them; it also starts Docker Desktop if needed). Keep `make.bat` and the `Makefile` in sync. `make.bat reset-db` and `make clean` delete local data.
 
 `notversioned/` is gitignored and holds local notes.

@@ -102,6 +102,8 @@ export const ko: Messages = {
   'split.personTitle': '연락처와 결제 정보 보기',
   'split.unknown': '알 수 없음',
   'split.hint': '금액을 누르면 PIX로 결제할 수 있습니다. 이름을 누르면 연락처를 볼 수 있습니다.',
+  'split.notClosedTitle': '아직 마감되지 않은 달입니다',
+  'split.notClosedBody': '{month}은(는) 아직 열려 있어 금액이 바뀔 수 있습니다. 달이 마감되면 결제 정보를 볼 수 있습니다.',
   'split.showDetails': '누가 무엇을 내고 부담했는지 보기',
   'split.hideDetails': '누가 무엇을 내고 부담했는지 숨기기',
   'split.col.person': '사람',

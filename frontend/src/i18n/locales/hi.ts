@@ -102,6 +102,8 @@ export const hi: Messages = {
   'split.personTitle': 'संपर्क और भुगतान जानकारी देखें',
   'split.unknown': 'अज्ञात',
   'split.hint': 'PIX से भुगतान के लिए राशि पर टैप करें। संपर्क जानकारी के लिए नाम पर टैप करें।',
+  'split.notClosedTitle': 'महीना अभी बंद नहीं हुआ',
+  'split.notClosedBody': '{month} अभी खुला है, इसलिए राशियाँ बदल सकती हैं। महीना बंद होने के बाद भुगतान की जानकारी मिलेगी।',
   'split.showDetails': 'दिखाएँ किसने क्या चुकाया और क्या उठाया',
   'split.hideDetails': 'छिपाएँ किसने क्या चुकाया और क्या उठाया',
   'split.col.person': 'व्यक्ति',

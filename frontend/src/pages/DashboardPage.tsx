@@ -9,6 +9,7 @@ import { memberAsReceiver } from '../components/pixReceivers';
 import { PixPayModal } from '../components/PixPayModal';
 import { CostList } from '../components/CostList';
 import { MemberContactModal } from '../components/MemberContactModal';
+import { Modal } from '../components/Modal';
 import { MonthActionsMenu } from '../components/MonthActionsMenu';
 import { MonthPicker } from '../components/MonthPicker';
 import { SplitCard } from '../components/SplitCard';
@@ -28,6 +29,7 @@ export function DashboardPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [contactId, setContactId] = useState<string | null>(null);
   const [paying, setPaying] = useState<Transfer | null>(null);
+  const [payBlocked, setPayBlocked] = useState(false);
   const [deleting, setDeleting] = useState<Cost | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const showMessage = useMessage();
@@ -238,7 +240,12 @@ export function DashboardPage() {
                 <p className="muted small">{t('dashboard.restrictedNote')}</p>
               )}
 
-              <SplitCard summary={summary} onPersonClick={setContactId} onPayClick={setPaying} />
+              <SplitCard
+                summary={summary}
+                onPersonClick={setContactId}
+                // Payment details only make sense once the month is closed and the split is final
+                onPayClick={(tr) => (summary.month.status === 'closed' ? setPaying(tr) : setPayBlocked(true))}
+              />
 
               {!summary.restricted && (
                 <section className="card" aria-labelledby="categories-title">
@@ -326,6 +333,18 @@ export function DashboardPage() {
           currency={summary.currency}
           onClose={() => setPaying(null)}
         />
+      )}
+      {payBlocked && summary && (
+        <Modal title={t('split.notClosedTitle')} onClose={() => setPayBlocked(false)}>
+          <div className="muted">
+            {t('split.notClosedBody', { month: monthLabel(summary.month.year, summary.month.month) })}
+          </div>
+          <div className="modal__actions">
+            <button className="button button--primary" onClick={() => setPayBlocked(false)}>
+              {t('common.close')}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {pickerOpen && household && selected && (
