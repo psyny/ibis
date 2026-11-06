@@ -101,7 +101,7 @@ export const ja: Messages = {
   'split.payTitle': '{name} に支払う（PIX）',
   'split.personTitle': '連絡先と支払い情報を見る',
   'split.unknown': '不明',
-  'split.hint': '金額をタップすると PIX で支払えます。名前をタップすると連絡先が見られます。',
+  'split.hint': '送金をタップすると PIX で支払えます。名前をタップすると連絡先が見られます。',
   'split.notClosedTitle': 'まだ締められていない月です',
   'split.notClosedBody': '{month} はまだ締められていないため、金額が変わる可能性があります。月が締められると支払い情報を確認できます。',
   'split.showDetails': '誰が何を払い、何を負担したかを表示',

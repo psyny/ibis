@@ -101,7 +101,7 @@ export const de: Messages = {
   'split.payTitle': '{name} bezahlen (PIX)',
   'split.personTitle': 'Kontakt- und Zahlungsdaten ansehen',
   'split.unknown': 'Unbekannt',
-  'split.hint': 'Tippe auf einen Betrag, um ihn mit PIX zu bezahlen. Tippe auf einen Namen für die Kontaktdaten.',
+  'split.hint': 'Tippe auf eine Überweisung, um sie mit PIX zu bezahlen. Tippe auf einen Namen für die Kontaktdaten.',
   'split.notClosedTitle': 'Monat noch nicht abgeschlossen',
   'split.notClosedBody': '{month} ist noch offen, die Beträge können sich also noch ändern. Die Zahlungsdaten sind verfügbar, sobald der Monat abgeschlossen ist.',
   'split.showDetails': 'Zeigen, wer was bezahlt und übernommen hat',

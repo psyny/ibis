@@ -5,21 +5,39 @@ import { formatMoney } from '../utils/format';
 
 interface Props {
   summary: MonthSummary;
+  /** The logged-in user's member id, used to color their transfers once the month is closed */
+  myMemberId: string | null;
   onPersonClick: (memberId: string) => void;
-  /** Tapping an amount opens the payment (PIX) sheet */
+  /** Tapping a transfer opens the payment (PIX) sheet */
   onPayClick: (transfer: Transfer) => void;
 }
 
 /** Who pays whom (fewest transfers), plus per-person paid/covered details. */
-export function SplitCard({ summary, onPersonClick, onPayClick }: Props) {
+export function SplitCard({ summary, myMemberId, onPersonClick, onPayClick }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const { t, tn } = useI18n();
   const names = new Map(summary.members.map((m) => [m.id, m.display_name]));
   const name = (id: string) => names.get(id) || t('split.unknown');
   const money = (v: number) => formatMoney(v, summary.currency);
+  const closed = summary.month.status === 'closed';
+
+  const rowTone = (tr: Transfer) => {
+    if (!closed || !myMemberId) return '';
+    if (tr.to_member_id === myMemberId) return ' split-row--receive';
+    if (tr.from_member_id === myMemberId) return ' split-row--pay';
+    return '';
+  };
 
   const person = (id: string) => (
-    <button className="person-link" onClick={() => onPersonClick(id)} title={t('split.personTitle')}>
+    <button
+      className="person-link"
+      onClick={(e) => {
+        e.stopPropagation(); // the row itself opens the payment sheet
+        onPersonClick(id);
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+      title={t('split.personTitle')}
+    >
       {name(id)}
     </button>
   );
@@ -43,19 +61,27 @@ export function SplitCard({ summary, onPersonClick, onPayClick }: Props) {
         <>
           <div className="split-list">
             {summary.transfers.map((tr) => (
-              <div className="split-row" key={`${tr.from_member_id}-${tr.to_member_id}`}>
+              // A div with button role, because the row holds the name buttons (buttons can't nest)
+              <div
+                className={`split-row${rowTone(tr)}`}
+                key={`${tr.from_member_id}-${tr.to_member_id}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => onPayClick(tr)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onPayClick(tr);
+                  }
+                }}
+                title={t('split.payTitle', { name: name(tr.to_member_id) })}
+              >
                 <div className="split-row__people">
                   {person(tr.from_member_id)}
                   <span className="split-row__arrow">{t('split.pays')}</span>
                   {person(tr.to_member_id)}
                 </div>
-                <button
-                  className="split-row__amount num"
-                  onClick={() => onPayClick(tr)}
-                  title={t('split.payTitle', { name: name(tr.to_member_id) })}
-                >
-                  {money(tr.amount)}
-                </button>
+                <span className="split-row__amount num">{money(tr.amount)}</span>
               </div>
             ))}
           </div>

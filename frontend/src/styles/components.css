@@ -494,6 +494,36 @@
   padding: 10px 12px;
   border-radius: var(--radius-small);
   background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.split-row:hover {
+  border-color: var(--border-hover);
+}
+
+.split-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Closed month: the logged-in member receives (green) or pays (red) */
+.split-row--receive {
+  background: var(--positive-soft);
+  border-color: var(--positive-border);
+}
+
+.split-row--pay {
+  background: var(--negative-soft);
+  border-color: var(--negative-border);
+}
+
+.split-row--receive:hover {
+  border-color: var(--positive);
+}
+
+.split-row--pay:hover {
+  border-color: var(--negative);
 }
 
 .split-row__people {
@@ -518,11 +548,20 @@
   color: var(--text-primary);
   border-radius: 999px;
   padding: 6px 12px;
-  cursor: pointer;
 }
 
-.split-row__amount:hover {
+.split-row:hover .split-row__amount {
   border-color: var(--accent);
+}
+
+.split-row--receive .split-row__amount {
+  background: transparent;
+  border-color: var(--positive-border);
+}
+
+.split-row--pay .split-row__amount {
+  background: transparent;
+  border-color: var(--negative-border);
 }
 
 /* ---------- Tools ---------- */

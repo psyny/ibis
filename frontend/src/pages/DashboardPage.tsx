@@ -242,6 +242,7 @@ export function DashboardPage() {
 
               <SplitCard
                 summary={summary}
+                myMemberId={household.my_member_id}
                 onPersonClick={setContactId}
                 // Payment details only make sense once the month is closed and the split is final
                 onPayClick={(tr) => (summary.month.status === 'closed' ? setPaying(tr) : setPayBlocked(true))}

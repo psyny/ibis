@@ -101,7 +101,7 @@ export const fr: Messages = {
   'split.payTitle': 'Payer {name} (PIX)',
   'split.personTitle': 'Voir les coordonnées et infos de paiement',
   'split.unknown': 'Inconnu',
-  'split.hint': 'Touchez un montant pour le payer avec PIX. Touchez un nom pour ses coordonnées.',
+  'split.hint': 'Touchez un virement pour le payer avec PIX. Touchez un nom pour ses coordonnées.',
   'split.notClosedTitle': 'Mois pas encore clôturé',
   'split.notClosedBody': '{month} est encore ouvert, les montants peuvent donc encore changer. Les informations de paiement seront disponibles une fois le mois clôturé.',
   'split.showDetails': 'Afficher qui a payé et pris en charge quoi',

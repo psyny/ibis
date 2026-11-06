@@ -101,7 +101,7 @@ export const zhCN: Messages = {
   'split.payTitle': '付款给 {name}（PIX）',
   'split.personTitle': '查看联系方式和付款信息',
   'split.unknown': '未知',
-  'split.hint': '点击金额用 PIX 付款，点击名字查看联系方式。',
+  'split.hint': '点击一笔转账用 PIX 付款，点击名字查看联系方式。',
   'split.notClosedTitle': '本月尚未结账',
   'split.notClosedBody': '{month} 仍未结账，金额可能还会变化。结账后即可查看付款信息。',
   'split.showDetails': '显示谁付了什么、分摊了什么',

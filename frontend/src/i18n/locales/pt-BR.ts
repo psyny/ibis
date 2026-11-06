@@ -101,7 +101,7 @@ export const ptBR: Messages = {
   'split.payTitle': 'Pagar {name} (PIX)',
   'split.personTitle': 'Ver contato e dados de pagamento',
   'split.unknown': 'Desconhecido',
-  'split.hint': 'Toque em um valor para pagar com PIX. Toque em um nome para ver o contato.',
+  'split.hint': 'Toque em uma transferência para pagar com PIX. Toque em um nome para ver o contato.',
   'split.notClosedTitle': 'Mês ainda não fechado',
   'split.notClosedBody': '{month} ainda está aberto, então os valores ainda podem mudar. Os dados de pagamento ficam disponíveis quando o mês for fechado.',
   'split.showDetails': 'Mostrar quem pagou e cobriu o quê',
