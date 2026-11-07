@@ -1,22 +1,28 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotificationBar } from '../hooks/useNotifications';
 import { useI18n } from '../i18n';
+import { NotificationBar } from './NotificationBar';
 
 interface TopBarProps {
   householdId?: string;
   householdName?: string;
   canManage?: boolean;
+  /** The inbox page lists everything already, so it hides the bar */
+  hideNotificationBar?: boolean;
   /** Extra controls, e.g. the month switcher */
   children?: ReactNode;
 }
 
-export function TopBar({ householdId, householdName, canManage, children }: TopBarProps) {
+export function TopBar({ householdId, householdName, canManage, hideNotificationBar, children }: TopBarProps) {
   const { me, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, tn } = useI18n();
+  const notifications = useNotificationBar(!!me);
+  const unviewed = notifications?.unviewed_count || 0;
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +41,7 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
   const otherHouseholds = (me?.households || []).filter((h) => h.id !== householdId);
 
   return (
+    <>
     <header className="topbar">
       <Link to={householdId ? `/h/${householdId}` : '/'} className="topbar__brand" title={t('menu.monthlyCosts')}>
         <img src="/favicon.svg" width={26} height={26} alt="" />
@@ -44,12 +51,18 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
       <div className="topbar__spacer" />
       {children}
       <div className="menu" ref={menuRef}>
-        <button className="icon-button" onClick={() => setOpen((v) => !v)} aria-label={t('menu.aria')} aria-expanded={open}>
+        <button
+          className="icon-button menu__toggle"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={unviewed > 0 ? `${t('menu.aria')} (${tn('notif.newCount', unviewed)})` : t('menu.aria')}
+          aria-expanded={open}
+        >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="4" y1="7" x2="20" y2="7" />
             <line x1="4" y1="12" x2="20" y2="12" />
             <line x1="4" y1="17" x2="20" y2="17" />
           </svg>
+          {unviewed > 0 && <span className="menu__dot" aria-hidden />}
         </button>
         {open && (
           <nav className="menu__panel">
@@ -64,6 +77,10 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
                 {t('menu.householdSettings')}
               </button>
             )}
+            <button className="menu__item menu__item--count" onClick={() => go('/notifications')}>
+              <span>{t('menu.notifications')}</span>
+              {unviewed > 0 && <span className="count-badge">{unviewed}</span>}
+            </button>
             <button className="menu__item" onClick={() => go('/account')}>
               {t('menu.myAccount')}
             </button>
@@ -100,5 +117,7 @@ export function TopBar({ householdId, householdName, canManage, children }: TopB
         )}
       </div>
     </header>
+    {!hideNotificationBar && notifications && <NotificationBar items={notifications.items} />}
+    </>
   );
 }

@@ -184,3 +184,27 @@ export interface AdminHousehold {
   language: string;
   member_count: number;
 }
+
+export type NotificationType = 'note' | 'task';
+export type NotificationBox = 'inbox' | 'completed' | 'deleted';
+
+/** One item of the user's notification inbox. Known `kind`s are rendered from `data` in the UI language. */
+export interface AppNotification {
+  id: string;
+  household_id: string | null;
+  type: NotificationType;
+  kind: string;
+  /** English fallback text, for kinds the UI doesn't know */
+  title: string;
+  body: string | null;
+  data: Record<string, unknown>;
+  viewed_at: string | null;
+  completed_at: string | null;
+  deleted_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationBarData {
+  items: AppNotification[];
+  unviewed_count: number;
+}

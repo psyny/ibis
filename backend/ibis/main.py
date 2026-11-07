@@ -13,6 +13,7 @@ from api.deps import REFRESHED_TOKEN_HEADER
 from api.health import router as health_router
 from api.households import router as households_router
 from api.months import router as months_router
+from api.notifications import router as notifications_router
 from db.session import SessionLocal
 from infrastructure.config.settings import settings
 from services.errors import DomainError
@@ -58,3 +59,4 @@ app.include_router(households_router)
 app.include_router(catalog_router)
 app.include_router(months_router)
 app.include_router(costs_router)
+app.include_router(notifications_router)

@@ -18,6 +18,7 @@ import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
 import { useI18n } from '../i18n';
 import { formatMoney, longDate, monthKey, monthLabel, monthOfDate, parseMonthKey, shiftMonth } from '../utils/format';
+import { notificationsChanged } from '../utils/notifications';
 
 export function DashboardPage() {
   const { householdId } = useParams();
@@ -71,6 +72,7 @@ export function DashboardPage() {
     setMissingMonth(false);
     try {
       setSummary(await getMonthSummary(householdId, selected.year, selected.month));
+      notificationsChanged(); // loading may have auto-closed a month (new payment tasks)
     } catch (e) {
       setSummary(null);
       if (e instanceof ApiError && e.status === 404) setMissingMonth(true);
@@ -81,6 +83,21 @@ export function DashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // ?pay=<member id> (from a payment notification): open my transfer to that person
+  const payTo = params.get('pay');
+  useEffect(() => {
+    if (!payTo || !summary || !household || !sameMonth(summary.month, selected)) return;
+    const transfer = summary.transfers.find(
+      (tr) => tr.to_member_id === payTo && tr.from_member_id === household.my_member_id,
+    );
+    if (summary.month.status !== 'closed') setPayBlocked(true);
+    else if (transfer) setPaying(transfer);
+    else showMessage('info', t('notif.transferGone'));
+    const next = new URLSearchParams(params);
+    next.delete('pay');
+    setParams(next, { replace: true });
+  }, [payTo, summary, household]);
 
   const goToMonth = (year: number, month: number) => {
     setPickerOpen(false);

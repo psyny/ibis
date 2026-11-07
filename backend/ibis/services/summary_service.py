@@ -3,15 +3,15 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from domain.money import from_cents, to_cents
-from domain.settlement import CostShares, compute_totals, settle
 from repositories.cost_repository import CostRepository
 from repositories.member_repository import MemberRepository
 from schemas.month_schemas import BalanceRead, CategoryTotalRead, MonthSummary, TransferRead
 from services.catalog_service import CatalogService, category_to_read
 from services.context import HouseholdContext
 from services.cost_service import CostService
-from services.member_service import member_to_read, sort_members
+from services.member_service import member_to_read
 from services.month_service import MonthService
+from services.split import split_costs
 
 UNCATEGORIZED = "Uncategorized"
 
@@ -34,14 +34,7 @@ class SummaryService:
         costs = self.costs.list_for_month(month_row.id)
         members = self.members.list_ordered(household.id)
 
-        totals = compute_totals(
-            CostShares(
-                amount_cents=to_cents(cost.amount),
-                payers=[m.id for m in sort_members(cost.payers)],
-                coverers=[m.id for m in sort_members(cost.coverers)],
-            )
-            for cost in costs
-        )
+        totals, settlement = split_costs(costs)
         order = {m.id: index for index, m in enumerate(members)}
         balances = [
             BalanceRead(member_id=member_id, paid=from_cents(t.paid), covered=from_cents(t.covered), net=from_cents(t.net))
@@ -49,7 +42,7 @@ class SummaryService:
         ]
         transfers = [
             TransferRead(from_member_id=t.debtor, to_member_id=t.creditor, amount=from_cents(t.amount_cents))
-            for t in settle({member_id: t.net for member_id, t in totals.items()})
+            for t in settlement
         ]
 
         by_category: dict = defaultdict(int)

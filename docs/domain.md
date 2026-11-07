@@ -48,7 +48,9 @@ Changing `JWT_SECRET_KEY` signs everyone out once.
 Each person has **bank info**: a type (`PIX` or `Other`) and a text value. People edit their own in
 My account; managers and admins can edit anyone's in Settings → Members.
 
-In the split table, tapping an amount opens a payment sheet. If the receiver's bank info is a PIX key
+In the split table, tapping a transfer opens a payment sheet, but only once the month is closed (an open
+month shows a "not closed yet" message instead, since amounts can still change). In a closed month, the
+signed-in person's transfers are tinted green (receives) or red (pays). If the receiver's bank info is a PIX key
 (and the household currency is BRL), Ibis generates a PIX QR code and a "Pix Copia e Cola" code with the
 exact amount (via `react-qrcode-pix`). Keys are cleaned up first: CPF/CNPJ to digits, emails to
 lower case, phones need `+55` (or parentheses) to be told apart from a CPF. Otherwise the sheet shows the
@@ -92,6 +94,23 @@ should call `CostService.create(ctx, data, source="whatsapp")` so they reuse the
 Example from the brief: A owes B 15, B owes C 15, C owes A 3 → A −12, B 0, C +12 → **A pays C 12**.
 
 Code: `backend/ibis/domain/settlement.py`, tested against brute force in `tests/unit/test_settlement.py`.
+
+## Notifications
+
+Each user has an inbox (menu → Notifications), across all their households. A notification is a
+**note** or a **task**. Clicking one marks it viewed. Tasks can be marked done (and undone); anything can
+be deleted (soft: `deleted_at`, shown in the Deleted tab, can be restored).
+
+- Tabs: **Inbox** (not done, not deleted), **Completed** (done tasks), **Deleted**.
+- The bar under the top bar shows the latest 5 of: notes not viewed yet, and tasks not done yet (even if
+  viewed). The menu icon gets a dot while the inbox has unviewed items.
+- **Month closed** (by a manager or auto-close): everyone who has to pay gets a task per transfer
+  (`kind = month_payment`). Clicking it opens that month's payment sheet (`/h/<id>?m=YYYY-MM&pay=<member>`).
+  Reopening the month removes the tasks not done yet; closing again sends fresh ones (amounts may have
+  changed). Done tasks are kept.
+- Text for known kinds is built in the UI language from `data`; `title`/`body` hold an English fallback.
+
+Code: `backend/ibis/services/notification_service.py`, `frontend/src/utils/notifications.ts`.
 
 ## Future integrations (not built yet)
 
