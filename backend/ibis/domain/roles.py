@@ -26,7 +26,11 @@ MIN_ROLE_VIEW = Role.VIEWER
 MIN_ROLE_ADD_COST = Role.GUEST  # guests, residents and managers add costs (and edit/delete their own)
 MIN_ROLE_MANAGE = Role.MANAGER
 
-# Roles that can appear as "who paid" / "who covers" on a cost.
+# Household tasks. Everyone sees all tasks, except guests, who see only the tasks assigned to them.
+MIN_ROLE_ADD_TASK = Role.RESIDENT  # add tasks (and edit/delete their own); also manage recurring tasks
+MIN_ROLE_COMPLETE_ANY_TASK = Role.RESIDENT  # guests can complete only tasks assigned to them
+
+# Roles that can appear as "who paid" / "who covers" on a cost, and be assigned to tasks.
 # Viewers only look at the numbers, so they are not part of the split.
 PARTICIPANT_ROLES = frozenset({Role.MANAGER, Role.RESIDENT, Role.GUEST})
 

@@ -8,10 +8,10 @@
 
 | Role | Can |
 |------|-----|
-| Manager | Everything: members, roles, categories, descriptions, starting state, months (create/close/reopen), edit/delete any cost |
-| Resident | Same as guest for now (kept separate for future rules) |
-| Guest | Add costs; edit/delete costs they added; take part in costs ("who paid" / "who covers") |
-| Viewer | View only; not part of costs |
+| Manager | Everything: members, roles, categories, descriptions, starting state, months (create/close/reopen), edit/delete any cost or task |
+| Resident | Add tasks (edit/delete the ones they added), complete any task, manage recurring tasks |
+| Guest | Add costs; edit/delete costs they added; take part in costs ("who paid" / "who covers"); see and complete only the tasks assigned to them |
+| Viewer | View only (all costs and all tasks); not part of costs; can't be assigned tasks |
 
 The whole policy is in `backend/ibis/domain/roles.py` (`MIN_ROLE_ADD_COST`, `PARTICIPANT_ROLES`, ...).
 
@@ -95,19 +95,62 @@ Example from the brief: A owes B 15, B owes C 15, C owes A 3 → A −12, B 0, C
 
 Code: `backend/ibis/domain/settlement.py`, tested against brute force in `tests/unit/test_settlement.py`.
 
+## Tasks
+
+Household to-dos (`/h/<id>/tasks`). A task has a title, an optional description, an optional due date,
+0+ assignees (managers, residents, guests; never viewers), an optional **category** and **location**, and
+its own **expiring** setting: how many days before the due date it turns yellow (default 3).
+
+- Categories and locations are **lists each household edits** (Settings → Tasks, managers). New households
+  start with defaults in their language (`domain/task_labels.py`): categories Cleaning, Maintenance,
+  Repair, Improvement, Bills, Shopping, Pets, Other; locations Whole house, Living room, Kitchen, Bedroom,
+  Bathroom, Laundry, Office, Garage, Garden. Managers can rename or delete any of them; deleting one
+  clears it from the tasks that used it. The defaults keep a `key`, so a renamed "Bills" is still used for
+  payment tasks. Who can do what is in the roles table above.
+
+- The list shows pending tasks, oldest due date first (no due date last). **Red** = past due,
+  **yellow** = due within its expiring days, **green** = completed (hidden unless "Show completed tasks"
+  is on). Color always comes with a text label ("Overdue by 2 days", "Due tomorrow", "Done").
+  Filters: assigned to me (**on by default**), assigned to a person, category, location (both All by default),
+  only tasks due this month.
+  The task menu (top right) has Add task and Recurring tasks.
+- One completion completes the task for everyone assigned (it records who did it).
+- **Notify assignees when** (per task, both off by default): it starts expiring, and/or it is past due.
+  Each note is sent once; changing the due date or the expiring days lets them go out again.
+- **Month closed** (by a manager or auto-close): everyone who has to pay gets a task per transfer
+  (`kind = month_payment`, category Bills if the household still has it, due 3 days after the close) and a note linking to it. The task's "Open payment"
+  button opens that month's payment sheet. Reopening the month removes the payment tasks not done yet
+  (and their notes); closing again creates fresh ones (amounts may have changed). Done tasks are kept.
+
+### Recurring tasks
+
+Managers and residents define them (Tasks → Recurring tasks): start date, every N days/weeks/months
+(monthly keeps the start's day; 31 becomes the last day in shorter months), and when each copy is due:
+on its scheduled date (default) or N days after it. Assign to **Everyone** (managers + residents),
+**Everyone, including guests**, or chosen people. "Everyone" is resolved each time a copy is created, so it
+follows who lives there.
+
+- There is no worker: copies are created whenever someone opens the household (and at API startup),
+  together with the month housekeeping and the due-date notes (`services/housekeeping.py`).
+- Each run creates at most one copy, for the latest scheduled date not handled yet, so missed dates never
+  pile up. A unique (recurring task, date) rule stops two simultaneous visits from creating it twice.
+- **Wait until the previous one is done** (on by default): if the last copy is still open on a scheduled
+  date, that date is skipped.
+- A new definition whose start date is in the past creates one copy right away. Editing the schedule never
+  backfills past dates. Deleting a definition keeps the tasks it created.
+
+Code: `backend/ibis/services/task_service.py`, `recurring_task_service.py`, `domain/tasks.py`.
+
 ## Notifications
 
-Each user has an inbox (menu → Notifications), across all their households. A notification is a
-**note** or a **task**. Clicking one marks it viewed. Tasks can be marked done (and undone); anything can
-be deleted (soft: `deleted_at`, shown in the Deleted tab, can be restored).
+Each user has an inbox (menu → Notifications), across all their households. Every notification is a
+**note**: clicking it marks it read and opens what it is about (its task, via `task_id`). Notes can be
+deleted (soft: `deleted_at`, shown in the Deleted tab, can be restored). To-dos are tasks, not notifications.
 
-- Tabs: **Inbox** (not done, not deleted), **Completed** (done tasks), **Deleted**.
-- The bar under the top bar shows the latest 5 of: notes not viewed yet, and tasks not done yet (even if
-  viewed). The menu icon gets a dot while the inbox has unviewed items.
-- **Month closed** (by a manager or auto-close): everyone who has to pay gets a task per transfer
-  (`kind = month_payment`). Clicking it opens that month's payment sheet (`/h/<id>?m=YYYY-MM&pay=<member>`).
-  Reopening the month removes the tasks not done yet; closing again sends fresh ones (amounts may have
-  changed). Done tasks are kept.
+- Tabs: **Inbox** (not deleted), **Deleted**.
+- The bar under the top bar shows the latest 5 unread notes. The menu icon gets a dot while there are any.
+- Notes come from tasks: a payment task after a month closes, and the optional "expiring" / "expired"
+  notes. Completing a task marks its notes as read.
 - Text for known kinds is built in the UI language from `data`; `title`/`body` hold an English fallback.
 
 Code: `backend/ibis/services/notification_service.py`, `frontend/src/utils/notifications.ts`.

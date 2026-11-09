@@ -42,6 +42,9 @@
   --positive-border: rgba(74, 222, 128, 0.28);
   --negative-soft: rgba(248, 113, 113, 0.08);
   --negative-border: rgba(248, 113, 113, 0.28);
+  /* Tasks: expiring soon (yellow) */
+  --warning-soft: rgba(234, 179, 8, 0.08);
+  --warning-border: rgba(234, 179, 8, 0.4);
 
   /* Corner Radius */
   --radius-small: 10px;

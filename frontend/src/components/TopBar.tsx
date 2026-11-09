@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotificationBar } from '../hooks/useNotifications';
 import { useI18n } from '../i18n';
 import { NotificationBar } from './NotificationBar';
+import { activeSection, MAIN_SECTIONS } from './sections';
 
 interface TopBarProps {
   householdId?: string;
@@ -11,7 +12,7 @@ interface TopBarProps {
   canManage?: boolean;
   /** The inbox page lists everything already, so it hides the bar */
   hideNotificationBar?: boolean;
-  /** Extra controls, e.g. the month switcher */
+  /** The page's own controls, on the right before the main menu (e.g. month switcher, page actions) */
   children?: ReactNode;
 }
 
@@ -20,6 +21,7 @@ export function TopBar({ householdId, householdName, canManage, hideNotification
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { t, tn } = useI18n();
   const notifications = useNotificationBar(!!me);
   const unviewed = notifications?.unviewed_count || 0;
@@ -42,13 +44,31 @@ export function TopBar({ householdId, householdName, canManage, hideNotification
 
   return (
     <>
+    {/* Three independent regions: brand (left), sections (always centered), page controls + menu (right) */}
     <header className="topbar">
-      <Link to={householdId ? `/h/${householdId}` : '/'} className="topbar__brand" title={t('menu.monthlyCosts')}>
-        <img src="/favicon.svg" width={26} height={26} alt="" />
-        Ibis
-        {householdName && <span className="topbar__household">· {householdName}</span>}
-      </Link>
-      <div className="topbar__spacer" />
+      <div className="topbar__left">
+        {/* The household name goes back to the household's home screen */}
+        <Link to={householdId ? `/h/${householdId}` : '/'} className="topbar__brand" title={t('menu.home')}>
+          <img src="/favicon.svg" width={26} height={26} alt="" />
+          <span className="topbar__appname">Ibis</span>
+          {householdName && <span className="topbar__household">{householdName}</span>}
+        </Link>
+      </div>
+      <nav className="topbar__nav" aria-label={t('nav.aria')}>
+        {householdId &&
+          MAIN_SECTIONS.map(({ id, Icon, title, path }) => (
+            <Link
+              key={id}
+              to={path(householdId)}
+              className={`topbar__nav-item${activeSection(pathname, householdId) === id ? ' topbar__nav-item--active' : ''}`}
+              title={t(title)}
+              aria-label={t(title)}
+            >
+              <Icon size={22} />
+            </Link>
+          ))}
+      </nav>
+      <div className="topbar__right">
       {children}
       <div className="menu" ref={menuRef}>
         <button
@@ -67,11 +87,6 @@ export function TopBar({ householdId, householdName, canManage, hideNotification
         {open && (
           <nav className="menu__panel">
             <div className="menu__label">{me ? t('menu.signedInAs', { name: me.display_name }) : t('menu.notSignedIn')}</div>
-            {householdId && (
-              <button className="menu__item" onClick={() => go(`/h/${householdId}`)}>
-                {t('menu.monthlyCosts')}
-              </button>
-            )}
             {householdId && canManage && (
               <button className="menu__item" onClick={() => go(`/h/${householdId}/settings`)}>
                 {t('menu.householdSettings')}
@@ -115,6 +130,7 @@ export function TopBar({ householdId, householdName, canManage, hideNotification
             )}
           </nav>
         )}
+      </div>
       </div>
     </header>
     {!hideNotificationBar && notifications && <NotificationBar items={notifications.items} />}

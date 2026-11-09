@@ -18,7 +18,7 @@ ibis/
 │   ├── Dockerfile / nginx.conf   # Production image
 │   └── src/
 │       ├── api/                  # Typed API client
-│       ├── pages/                # Dashboard, Add/Edit cost, Settings, Account, Admin
+│       ├── pages/                # Home, Costs, Add/Edit cost, Tasks, Settings, Account, Admin
 │       └── components/           # Split table, category chart, cost list...
 └── backend/
     ├── Dockerfile.api            # Runs migrations on startup if RUN_MIGRATIONS_ON_STARTUP=true
@@ -91,10 +91,13 @@ make fe-build fe-tests   # frontend typecheck/build + unit tests
 
 | URL | What |
 |-----|------|
-| `/h/:householdId` | Monthly costs: split table, costs per category, cost list. `?m=2026-10` picks a month |
+| `/h/:householdId` | Household home: cards for Costs and Tasks, then Tools, Notifications, Account |
+| `/h/:householdId/costs` | Monthly costs: split table, costs per category, cost list. `?m=2026-10` picks a month |
 | `/h/:householdId/add` | Add a cost. Shareable link (asks to sign in first if needed) |
 | `/h/:householdId/costs/:costId` | Edit/delete a cost |
-| `/h/:householdId/settings` | Managers: members, categories, descriptions, starting state, months |
+| `/h/:householdId/tasks` | Household tasks (red overdue, yellow expiring, green done) with filters. `?task=<id>` opens one |
+| `/h/:householdId/tasks/recurring` | Managers and residents: recurring task definitions |
+| `/h/:householdId/settings` | Managers: members, categories, descriptions, starting state, months, task categories and locations |
 | `/account` | Your name, payment info (transfer number, QR code), WhatsApp, email, password |
 | `/admin` | App admin: households and accounts |
 

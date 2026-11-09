@@ -162,11 +162,10 @@ export function DashboardPage() {
         }`
       : '#';
 
-  return (
-    <>
-      <TopBar householdId={householdId} householdName={household?.name} canManage={household?.permissions.can_manage}>
-        {selected && (
-          <div className="topbar__month">
+  // In the top bar on wide screens; on phones it moves to the top of the page (the bar's right side is too narrow)
+  const monthSwitcher = (placement: string) =>
+    selected && (
+          <div className={`topbar__month ${placement}`}>
             <button
               className="icon-button topbar__month-arrow"
               aria-label={t('month.previous')}
@@ -191,7 +190,12 @@ export function DashboardPage() {
               ›
             </button>
           </div>
-        )}
+    );
+
+  return (
+    <>
+      <TopBar householdId={householdId} householdName={household?.name} canManage={household?.permissions.can_manage}>
+        {monthSwitcher('wide-only')}
         {summary && summary.can_manage && (
           <MonthActionsMenu
             month={summary.month}
@@ -204,6 +208,7 @@ export function DashboardPage() {
 
       <main className="page">
         <div className="page__inner">
+          <div className="page-switcher narrow-only">{monthSwitcher('')}</div>
           {!household && <div className="state-message">{t('common.loading')}</div>}
           {error && <div className="card state-message form-error">{error}</div>}
 

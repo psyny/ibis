@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { completeNotification, viewNotification } from '../api/notifications';
+import { viewNotification } from '../api/notifications';
 import type { AppNotification } from '../api/types';
 import { useMessage } from '../contexts/MessageContext';
 import { useOpenNotification } from '../hooks/useNotifications';
@@ -10,7 +10,7 @@ interface Props {
   items: AppNotification[];
 }
 
-/** Strip under the top bar: latest notes not viewed yet and tasks not done yet (up to 5). */
+/** Strip under the top bar: latest notes not read yet (up to 5). */
 export function NotificationBar({ items }: Props) {
   const { t } = useI18n();
   const open = useOpenNotification();
@@ -18,10 +18,9 @@ export function NotificationBar({ items }: Props) {
 
   if (items.length === 0) return null;
 
-  const act = async (n: AppNotification) => {
+  const dismiss = async (n: AppNotification) => {
     try {
-      // Tasks are marked done; notes are just dismissed (marked viewed)
-      await (n.type === 'task' ? completeNotification(n.id) : viewNotification(n.id));
+      await viewNotification(n.id); // marks it read
       notificationsChanged();
     } catch (e) {
       showMessage('error', (e as Error).message);
@@ -34,10 +33,10 @@ export function NotificationBar({ items }: Props) {
         {items.map((n) => {
           const text = notificationText(n, t);
           return (
-            <div key={n.id} className={`notif-item notif-item--${n.type}${n.viewed_at ? '' : ' notif-item--new'}`}>
+            <div key={n.id} className={`notif-item${n.viewed_at ? '' : ' notif-item--new'}`}>
               <button className="notif-item__main" onClick={() => open(n)}>
                 <span className="notif-item__icon" aria-hidden>
-                  {n.type === 'task' ? '☐' : '•'}
+                  •
                 </span>
                 <span className="notif-item__text">
                   <span className="notif-item__title">{text.title}</span>
@@ -46,11 +45,11 @@ export function NotificationBar({ items }: Props) {
               </button>
               <button
                 className="icon-button notif-item__action"
-                onClick={() => act(n)}
-                aria-label={n.type === 'task' ? t('notif.complete') : t('notif.dismiss')}
-                title={n.type === 'task' ? t('notif.complete') : t('notif.dismiss')}
+                onClick={() => dismiss(n)}
+                aria-label={t('notif.dismiss')}
+                title={t('notif.dismiss')}
               >
-                {n.type === 'task' ? '✓' : '✕'}
+                ✕
               </button>
             </div>
           );

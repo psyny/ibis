@@ -9,6 +9,7 @@ from models.member import HouseholdMember
 from schemas.household_schemas import HouseholdCreate, HouseholdPermissions, HouseholdRead, HouseholdUpdate
 from services.context import HouseholdContext
 from services.errors import NotFoundError, ValidationError
+from services.task_label_service import TaskLabelService
 
 
 class HouseholdService:
@@ -41,6 +42,8 @@ class HouseholdService:
             language=data.language,
         )
         self.db.add(household)
+        self.db.flush()
+        TaskLabelService(self.db).seed_defaults(household)  # initial task categories and locations
         self.db.commit()
         self.db.refresh(household)
         return household
@@ -84,6 +87,8 @@ class HouseholdService:
             today=today_in(household.timezone),
             my_role=ctx.role.value,
             my_member_id=ctx.member.id if ctx.member else None,
-            permissions=HouseholdPermissions(can_add_cost=ctx.can_add_cost, can_manage=ctx.can_manage),
+            permissions=HouseholdPermissions(
+                can_add_cost=ctx.can_add_cost, can_manage=ctx.can_manage, can_add_task=ctx.can_add_task
+            ),
             member_count=self.member_count(household.id),
         )

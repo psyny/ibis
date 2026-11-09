@@ -14,21 +14,22 @@ from api.health import router as health_router
 from api.households import router as households_router
 from api.months import router as months_router
 from api.notifications import router as notifications_router
+from api.tasks import router as tasks_router
 from db.session import SessionLocal
 from infrastructure.config.settings import settings
 from services.errors import DomainError
-from services.month_service import MonthService
+from services.housekeeping import sync_all
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     print(f"Configured CORS origins: {settings.cors_origin_list}")
-    # Create current/next month tables and apply auto-close for every household.
+    # Every household: create current/next month, auto-close, recurring tasks, due-date notes.
     db = SessionLocal()
     try:
-        MonthService(db).sync_all()
+        sync_all(db)
     except Exception as exc:  # never block startup (e.g. migrations not applied yet)
-        print(f"Startup month sync skipped: {exc}")
+        print(f"Startup household sync skipped: {exc}")
     finally:
         db.close()
     yield
@@ -60,3 +61,4 @@ app.include_router(catalog_router)
 app.include_router(months_router)
 app.include_router(costs_router)
 app.include_router(notifications_router)
+app.include_router(tasks_router)

@@ -192,9 +192,9 @@ export function CostFormPage() {
   };
 
   const backUrl = () => {
-    if (!date || !household) return `/h/${householdId}`;
+    if (!date || !household) return `/h/${householdId}/costs`;
     const sameAsToday = date.slice(0, 7) === household.today.slice(0, 7);
-    return sameAsToday ? `/h/${householdId}` : `/h/${householdId}?m=${monthKey(Number(date.slice(0, 4)), Number(date.slice(5, 7)))}`;
+    return sameAsToday ? `/h/${householdId}/costs` : `/h/${householdId}/costs?m=${monthKey(Number(date.slice(0, 4)), Number(date.slice(5, 7)))}`;
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -218,7 +218,7 @@ export function CostFormPage() {
       <div className="card state-message">
         {t('cost.viewersCannotAdd')}
         <div style={{ marginTop: 16 }}>
-          <Link to={`/h/${householdId}`} className="button button--secondary">
+          <Link to={`/h/${householdId}/costs`} className="button button--secondary">
             {t('cost.backToMonthly')}
           </Link>
         </div>

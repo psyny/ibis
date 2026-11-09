@@ -8,7 +8,5 @@ export const getNotificationBar = () => request<NotificationBarData>(`${base}/ba
 
 const action = (name: string) => (id: string) => request<AppNotification>(`${base}/${id}/${name}`, { method: 'POST' });
 export const viewNotification = action('view');
-export const completeNotification = action('complete');
-export const uncompleteNotification = action('uncomplete');
 export const deleteNotification = action('delete');
 export const restoreNotification = action('restore');

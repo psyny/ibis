@@ -32,6 +32,8 @@ class HouseholdUpdate(BaseModel):
 class HouseholdPermissions(BaseModel):
     can_add_cost: bool
     can_manage: bool
+    # Add tasks and manage recurring tasks (managers and residents)
+    can_add_task: bool = False
 
 
 class HouseholdRead(BaseModel):

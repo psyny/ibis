@@ -1,20 +1,14 @@
-import calendar
 import uuid
 from datetime import datetime, timezone
+from typing import Any, Iterable, Optional
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from domain.money import from_cents
-from models.household import Household
-from models.month import HouseholdMonth
-from models.notification import KIND_MONTH_PAYMENT, TYPE_NOTE, TYPE_TASK, Notification
+from models.notification import TYPE_NOTE, Notification
 from models.user import User
-from repositories.cost_repository import CostRepository
-from repositories.member_repository import MemberRepository
 from schemas.notification_schemas import NotificationBox
-from services.errors import NotFoundError, ValidationError
-from services.split import split_costs
+from services.errors import NotFoundError
 
 BAR_LIMIT = 5
 
@@ -23,62 +17,50 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def month_group_key(month: HouseholdMonth) -> str:
-    return f"month_payment:{month.household_id}:{month.year:04d}-{month.month:02d}"
-
-
 class NotificationService:
-    """Per-user inbox. Producers (e.g. closing a month) add items; the user views, completes or deletes them."""
+    """Per-user inbox of notes. Producers (e.g. tasks) add notes; the user views (reads) or deletes them."""
 
     def __init__(self, db: Session):
         self.db = db
 
     # --- Producers (they flush; the caller commits) ------------------------------------
-    def month_closed(self, household: Household, month: HouseholdMonth) -> None:
-        """Send each person who has to pay something a task with their transfer.
-
-        Replaces the open tasks of an earlier close of the same month (amounts may have changed);
-        completed ones are kept.
-        """
-        group = month_group_key(month)
-        self._drop_open(group)
-        _, transfers = split_costs(CostRepository(self.db).list_for_month(month.id))
-        members = {m.id: m for m in MemberRepository(self.db).list_ordered(household.id)}
-        label = f"{calendar.month_name[month.month]} {month.year}"
-        for transfer in transfers:
-            debtor, creditor = members.get(transfer.debtor), members.get(transfer.creditor)
-            if debtor is None or creditor is None or not debtor.is_active or not debtor.user.is_active:
-                continue
-            amount = from_cents(transfer.amount_cents)
+    def add_note(
+        self,
+        user_ids: Iterable[uuid.UUID],
+        *,
+        household_id: Optional[uuid.UUID],
+        kind: str,
+        title: str,
+        data: dict[str, Any],
+        task_id: Optional[uuid.UUID] = None,
+        group_key: Optional[str] = None,
+    ) -> None:
+        for user_id in dict.fromkeys(user_ids):  # one note per person
             self.db.add(
                 Notification(
-                    user_id=debtor.user_id,
-                    household_id=household.id,
-                    type=TYPE_TASK,
-                    kind=KIND_MONTH_PAYMENT,
-                    title=f"Pay {creditor.user.display_name} {household.currency} {amount:.2f} for {label}",
-                    data={
-                        "household_name": household.name,
-                        "year": month.year,
-                        "month": month.month,
-                        "to_member_id": str(creditor.id),
-                        "to_name": creditor.user.display_name,
-                        "amount": amount,
-                        "currency": household.currency,
-                    },
-                    group_key=group,
+                    user_id=user_id,
+                    household_id=household_id,
+                    type=TYPE_NOTE,
+                    kind=kind,
+                    title=title,
+                    data=data,
+                    task_id=task_id,
+                    group_key=group_key,
                 )
             )
         self.db.flush()
 
-    def month_reopened(self, month: HouseholdMonth) -> None:
-        """Amounts can change again, so the month's pending payment tasks go away until it closes again."""
-        self._drop_open(month_group_key(month))
-        self.db.flush()
+    def drop_for_tasks(self, task_ids: list[uuid.UUID]) -> None:
+        """Remove the notes about tasks that are being deleted."""
+        if task_ids:
+            self.db.execute(delete(Notification).where(Notification.task_id.in_(task_ids)))
 
-    def _drop_open(self, group_key: str) -> None:
+    def mark_task_viewed(self, task_id: uuid.UUID) -> None:
+        """A completed task's notes no longer need attention: take them out of everyone's bar."""
         self.db.execute(
-            delete(Notification).where(Notification.group_key == group_key, Notification.completed_at.is_(None))
+            update(Notification)
+            .where(Notification.task_id == task_id, Notification.viewed_at.is_(None))
+            .values(viewed_at=_now())
         )
 
     # --- Reading ---------------------------------------------------------------------------
@@ -86,33 +68,21 @@ class NotificationService:
         query = select(Notification).where(Notification.user_id == user.id)
         if box == "deleted":
             query = query.where(Notification.deleted_at.is_not(None))
-        elif box == "completed":
-            query = query.where(Notification.deleted_at.is_(None), Notification.completed_at.is_not(None))
         else:
-            query = query.where(Notification.deleted_at.is_(None), Notification.completed_at.is_(None))
+            query = query.where(Notification.deleted_at.is_(None))
         return list(self.db.scalars(query.order_by(Notification.created_at.desc())))
 
     def bar(self, user: User) -> tuple[list[Notification], int]:
-        """Latest notes not viewed yet and tasks not completed yet (up to 5), plus the inbox's unviewed count."""
-        pending = and_(
+        """Latest notes not viewed yet (up to 5), plus how many there are."""
+        unread = (
             Notification.user_id == user.id,
             Notification.deleted_at.is_(None),
-            or_(
-                and_(Notification.type == TYPE_NOTE, Notification.viewed_at.is_(None)),
-                and_(Notification.type == TYPE_TASK, Notification.completed_at.is_(None)),
-            ),
+            Notification.viewed_at.is_(None),
         )
         items = list(
-            self.db.scalars(select(Notification).where(pending).order_by(Notification.created_at.desc()).limit(BAR_LIMIT))
+            self.db.scalars(select(Notification).where(*unread).order_by(Notification.created_at.desc()).limit(BAR_LIMIT))
         )
-        unviewed = self.db.scalar(
-            select(func.count(Notification.id)).where(
-                Notification.user_id == user.id,
-                Notification.deleted_at.is_(None),
-                Notification.completed_at.is_(None),
-                Notification.viewed_at.is_(None),
-            )
-        )
+        unviewed = self.db.scalar(select(func.count(Notification.id)).where(*unread))
         return items, unviewed or 0
 
     # --- User actions ----------------------------------------------------------------------
@@ -121,15 +91,6 @@ class NotificationService:
         if found.viewed_at is None:
             found.viewed_at = _now()
             self.db.commit()
-        return found
-
-    def complete(self, user: User, notification_id: uuid.UUID, completed: bool = True) -> Notification:
-        found = self._get(user, notification_id)
-        if not found.is_task:
-            raise ValidationError("Only tasks can be completed")
-        found.completed_at = (found.completed_at or _now()) if completed else None
-        found.viewed_at = found.viewed_at or _now()
-        self.db.commit()
         return found
 
     def delete(self, user: User, notification_id: uuid.UUID, deleted: bool = True) -> Notification:

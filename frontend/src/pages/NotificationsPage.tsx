@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  completeNotification,
-  deleteNotification,
-  listNotifications,
-  restoreNotification,
-  uncompleteNotification,
-} from '../api/notifications';
+import { deleteNotification, listNotifications, restoreNotification } from '../api/notifications';
 import type { AppNotification, NotificationBox } from '../api/types';
+import { TrashIcon } from '../components/icons';
 import { TopBar } from '../components/TopBar';
 import { lastHousehold, useAuth } from '../contexts/AuthContext';
 import { useMessage } from '../contexts/MessageContext';
@@ -16,9 +11,9 @@ import { useI18n } from '../i18n';
 import { shortDate } from '../utils/format';
 import { notificationText, notificationsChanged, onNotificationsChanged } from '../utils/notifications';
 
-const BOXES: NotificationBox[] = ['inbox', 'completed', 'deleted'];
+const BOXES: NotificationBox[] = ['inbox', 'deleted'];
 
-/** The user's notification inbox, with Completed and Deleted tabs. */
+/** The user's notification inbox, with a Deleted tab. */
 export function NotificationsPage() {
   const { me } = useAuth();
   const { t } = useI18n();
@@ -56,7 +51,7 @@ export function NotificationsPage() {
     }
   };
 
-  const empty = { inbox: t('notif.empty.inbox'), completed: t('notif.empty.completed'), deleted: t('notif.empty.deleted') }[box];
+  const empty = box === 'inbox' ? t('notif.empty.inbox') : t('notif.empty.deleted');
 
   return (
     <>
@@ -87,30 +82,20 @@ export function NotificationsPage() {
               {items.map((n) => {
                 const text = notificationText(n, t);
                 return (
-                  <div key={n.id} className={`notif-item notif-item--${n.type}${n.viewed_at ? '' : ' notif-item--new'}`}>
+                  <div key={n.id} className={`notif-item${n.viewed_at ? '' : ' notif-item--new'}`}>
                     <button className="notif-item__main" onClick={() => open(n)}>
                       <span className="notif-item__icon" aria-hidden>
-                        {n.type === 'task' ? (n.completed_at ? '☑' : '☐') : '•'}
+                        •
                       </span>
                       <span className="notif-item__text">
                         <span className="notif-item__title">{text.title}</span>
                         <span className="notif-item__body">
-                          {n.type === 'task' ? t('notif.task') : t('notif.note')} · {shortDate(n.created_at.slice(0, 10))}
+                          {shortDate(n.created_at.slice(0, 10))}
                           {text.body ? ` · ${text.body}` : ''}
                         </span>
                       </span>
                     </button>
                     <div className="notif-item__actions">
-                      {box === 'inbox' && n.type === 'task' && (
-                        <button className="button button--ghost button--small" onClick={() => run(completeNotification)(n)}>
-                          {t('notif.complete')}
-                        </button>
-                      )}
-                      {box === 'completed' && (
-                        <button className="button button--ghost button--small" onClick={() => run(uncompleteNotification)(n)}>
-                          {t('notif.uncomplete')}
-                        </button>
-                      )}
                       {box === 'deleted' ? (
                         <button className="button button--ghost button--small" onClick={() => run(restoreNotification)(n)}>
                           {t('notif.restore')}
@@ -122,9 +107,7 @@ export function NotificationsPage() {
                           aria-label={t('notif.delete')}
                           title={t('notif.delete')}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-                          </svg>
+                          <TrashIcon size={18} />
                         </button>
                       )}
                     </div>

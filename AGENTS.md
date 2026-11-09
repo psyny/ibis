@@ -1,6 +1,6 @@
 # Ibis
 
-Household finance app: people in a household add shared costs, and Ibis shows each month's totals per category and the fewest transfers needed to settle who owes whom.
+Household app: people in a household add shared costs, and Ibis shows each month's totals per category and the fewest transfers needed to settle who owes whom. It also keeps household tasks (one-off and recurring), with due dates and reminders.
 
 Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend served by nginx, PostgreSQL 16. No queue or worker.
 

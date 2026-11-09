@@ -78,7 +78,7 @@ export function MonthsSection({ householdId, currency }: Props) {
           <div key={m.id} className="list-item">
             <div className="list-item__main">
               <div className="list-item__title">
-                <Link to={`/h/${householdId}?m=${monthKey(m.year, m.month)}`}>{monthLabel(m.year, m.month)}</Link>{' '}
+                <Link to={`/h/${householdId}/costs?m=${monthKey(m.year, m.month)}`}>{monthLabel(m.year, m.month)}</Link>{' '}
                 <span className={`pill pill--${m.status}`}>{m.status === 'open' ? t('month.open') : t('month.closed')}</span>
               </div>
               <div className="list-item__sub">

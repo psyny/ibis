@@ -5,6 +5,7 @@ from models.member import HouseholdMember
 from models.category import Category, CostPreset
 from models.month import HouseholdMonth
 from models.cost import Cost, RecurringCost
+from models.task import RecurringTask, Task, TaskLabel
 from models.notification import Notification
 
 __all__ = [
@@ -16,5 +17,8 @@ __all__ = [
     "HouseholdMonth",
     "Cost",
     "RecurringCost",
+    "RecurringTask",
+    "Task",
+    "TaskLabel",
     "Notification",
 ]

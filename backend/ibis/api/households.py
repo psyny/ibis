@@ -11,7 +11,7 @@ from schemas.user_schemas import PasswordReset
 from services.context import HouseholdContext
 from services.household_service import HouseholdService
 from services.member_service import MemberService, member_to_read
-from services.month_service import MonthService
+from services.housekeeping import sync_household
 
 router = APIRouter(prefix="/api/households/{household_id}", tags=["households"])
 
@@ -21,7 +21,7 @@ manage = household_context(MIN_ROLE_MANAGE)
 
 @router.get("", response_model=HouseholdRead)
 def get_household(ctx: HouseholdContext = Depends(view), db: Session = Depends(get_db)):
-    MonthService(db).sync(ctx.household)
+    sync_household(db, ctx.household)
     return HouseholdService(db).to_read(ctx)
 
 
@@ -29,7 +29,7 @@ def get_household(ctx: HouseholdContext = Depends(view), db: Session = Depends(g
 def update_household(data: HouseholdUpdate, ctx: HouseholdContext = Depends(manage), db: Session = Depends(get_db)):
     service = HouseholdService(db)
     service.update(ctx, data)
-    MonthService(db).sync(ctx.household)
+    sync_household(db, ctx.household)
     return service.to_read(ctx)
 
 

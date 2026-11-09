@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-NotificationBox = Literal["inbox", "completed", "deleted"]
+NotificationBox = Literal["inbox", "deleted"]
 
 
 class NotificationRead(BaseModel):
@@ -17,14 +17,14 @@ class NotificationRead(BaseModel):
     title: str
     body: Optional[str] = None
     data: dict[str, Any]
+    task_id: Optional[uuid.UUID] = None
     viewed_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     created_at: datetime
 
 
 class NotificationBar(BaseModel):
-    """What the bar under the top bar shows, plus the inbox badge count."""
+    """Latest unread notes for the bar under the top bar, plus the unread count (menu badge)."""
 
     items: list[NotificationRead]
     unviewed_count: int

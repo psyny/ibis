@@ -332,7 +332,9 @@
   z-index: 100;
   height: var(--topbar-height);
   padding: 0 8px 0 14px;
-  display: flex;
+  /* Left and right columns are always equal, so the middle one stays centered */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   background: rgba(8, 8, 8, 0.92);
@@ -365,10 +367,6 @@
 
 .topbar__brand:hover .topbar__household {
   color: var(--text-primary);
-}
-
-.topbar__spacer {
-  flex: 1;
 }
 
 .topbar__month {
@@ -967,6 +965,7 @@ a.cost-item:hover {
 
 .modal__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 16px;
@@ -1292,10 +1291,6 @@ a.cost-item:hover {
   border: 1px solid var(--border);
   border-left: 3px solid var(--border-hover);
   background: var(--card-bg);
-}
-
-.notif-item--task {
-  border-left-color: var(--negative-border);
 }
 
 .notif-item--new {

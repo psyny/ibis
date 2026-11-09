@@ -1,0 +1,411 @@
+/* Household home screen, top bar sections, tasks and recurring tasks */
+
+/* ---------- Top bar: three regions that don't push each other ---------- */
+.topbar__left {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.topbar__right {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.topbar__appname + .topbar__household::before {
+  content: '· ';
+}
+
+.topbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar__nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-small);
+  color: var(--text-muted);
+  text-decoration: none !important;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.topbar__nav-item:hover {
+  color: var(--text-primary);
+  background: var(--card-bg-hover);
+}
+
+.topbar__nav-item--active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Phones: drop the "Ibis" word so the household name has room (it truncates if long) */
+@media (max-width: 520px) {
+  .topbar__appname {
+    display: none;
+  }
+  .topbar__nav-item {
+    width: 36px;
+  }
+}
+
+/* Controls too wide for the top bar's right side on phones (the month switcher) move into the page */
+.wide-only {
+  display: none !important;
+}
+
+@media (min-width: 640px) {
+  .wide-only {
+    display: inline-flex !important;
+  }
+  .narrow-only {
+    display: none !important;
+  }
+}
+
+.page-switcher {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------- Household home ---------- */
+.hub-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.hub-grid--main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hub-grid--small {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hub-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-primary);
+  text-decoration: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.hub-card:hover {
+  border-color: var(--accent);
+  background: var(--card-bg-hover);
+}
+
+.hub-card--main {
+  min-height: 150px;
+  padding: 20px;
+}
+
+.hub-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-small);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.hub-card--small .hub-card__icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-secondary);
+  background: var(--card-bg-hover);
+}
+
+.hub-card__title {
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.hub-card--small .hub-card__title {
+  font-size: 15px;
+}
+
+.hub-card__description {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.hub-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* Phones: the smaller cards become full-width rows, so their descriptions still fit */
+@media (max-width: 640px) {
+  .hub-grid--small {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .hub-card--small {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 12px 14px;
+  }
+  .hub-card--small .hub-card__icon {
+    grid-row: 1 / 3;
+    margin-bottom: 0;
+  }
+}
+
+/* ---------- Task list ---------- */
+.task-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-filters__select {
+  width: auto;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.task-filters__select--on {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Status colors always come with a text label (Overdue, Due in 2 days, Done) */
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-hover);
+  background: var(--card-bg);
+}
+
+.task-card--overdue {
+  border-color: var(--negative-border);
+  border-left-color: var(--negative);
+  background: var(--negative-soft);
+}
+
+.task-card--expiring {
+  border-color: var(--warning-border);
+  border-left-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.task-card--completed {
+  border-color: var(--positive-border);
+  border-left-color: var(--positive);
+  background: var(--positive-soft);
+}
+
+/* The round "done" button; 28px circle inside a 40px tap area */
+.task-card__check {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin: 6px;
+  border-radius: 50%;
+  border: 2px solid var(--border-hover);
+  background: transparent;
+  color: var(--bg-main);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.task-card__check:hover {
+  border-color: var(--positive);
+}
+
+.task-card__check--done {
+  border-color: var(--positive);
+  background: var(--positive);
+}
+
+.task-card__check--placeholder {
+  visibility: hidden;
+}
+
+.task-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.task-card__main:hover .task-card__title {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+}
+
+.task-card--completed .task-card__title {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.task-card__category {
+  margin-left: 8px;
+  vertical-align: 2px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.task-card__meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.task-card--overdue .task-card__due {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+.task-card--expiring .task-card__due {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.task-card--completed .task-card__due {
+  color: var(--positive);
+}
+
+.task-card__delete {
+  flex-shrink: 0;
+}
+
+/* ---------- Task details ---------- */
+.task-status {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-hover);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.task-status--overdue {
+  border-color: var(--negative-border);
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.task-status--expiring {
+  border-color: var(--warning-border);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.task-status--completed {
+  border-color: var(--positive-border);
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.task-detail__description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 16px;
+}
+
+.task-detail__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.task-detail__facts dt {
+  color: var(--text-muted);
+}
+
+.task-detail__delete {
+  color: var(--danger);
+  margin-right: auto;
+}
+
+/* ---------- Small form helpers ---------- */
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-field__number {
+  width: 84px;
+  flex-shrink: 0;
+}
+
+.form-fieldset {
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.back-link {
+  align-self: flex-start;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.back-link:hover {
+  color: var(--text-primary);
+}
+
+.list-item__button {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}

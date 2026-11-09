@@ -4,6 +4,7 @@ import { GeneralSection } from '../components/settings/GeneralSection';
 import { MembersSection } from '../components/settings/MembersSection';
 import { MonthsSection } from '../components/settings/MonthsSection';
 import { RecurringSection } from '../components/settings/RecurringSection';
+import { TaskLabelsSection } from '../components/settings/TaskLabelsSection';
 import { TopBar } from '../components/TopBar';
 import { useHousehold } from '../hooks/useHousehold';
 import { MessageKey, useI18n } from '../i18n';
@@ -14,6 +15,7 @@ const TABS: { id: string; label: MessageKey }[] = [
   { id: 'descriptions', label: 'settings.tab.descriptions' },
   { id: 'starting', label: 'settings.tab.fixedCosts' },
   { id: 'months', label: 'settings.tab.months' },
+  { id: 'tasks', label: 'settings.tab.tasks' },
   { id: 'general', label: 'settings.tab.general' },
 ];
 
@@ -40,6 +42,8 @@ export function SettingsPage() {
         return <RecurringSection householdId={household.id} currency={household.currency} />;
       case 'months':
         return <MonthsSection householdId={household.id} currency={household.currency} />;
+      case 'tasks':
+        return <TaskLabelsSection householdId={household.id} />;
       case 'general':
         return <GeneralSection key={household.id} household={household} onSaved={reload} />;
       default:

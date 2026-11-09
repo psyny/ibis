@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from domain.roles import MIN_ROLE_ADD_COST, MIN_ROLE_MANAGE, Role, has_role
+from domain.roles import MIN_ROLE_ADD_COST, MIN_ROLE_ADD_TASK, MIN_ROLE_MANAGE, Role, has_role
 from models.household import Household
 from models.member import HouseholdMember
 from models.user import User
@@ -32,6 +32,15 @@ class HouseholdContext:
     @property
     def can_manage(self) -> bool:
         return has_role(self.role, MIN_ROLE_MANAGE)
+
+    @property
+    def can_add_task(self) -> bool:
+        return has_role(self.role, MIN_ROLE_ADD_TASK)
+
+    @property
+    def sees_all_tasks(self) -> bool:
+        """Guests only see the tasks assigned to them; everyone else (viewers too) sees all."""
+        return self.role != Role.GUEST
 
     @property
     def is_shielded(self) -> bool:

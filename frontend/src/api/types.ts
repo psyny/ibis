@@ -42,7 +42,8 @@ export interface Household {
   today: string;
   my_role: Role;
   my_member_id: string | null;
-  permissions: { can_add_cost: boolean; can_manage: boolean };
+  /** can_add_task: add tasks and manage recurring tasks (managers and residents) */
+  permissions: { can_add_cost: boolean; can_manage: boolean; can_add_task: boolean };
   member_count: number;
 }
 
@@ -185,8 +186,9 @@ export interface AdminHousehold {
   member_count: number;
 }
 
-export type NotificationType = 'note' | 'task';
-export type NotificationBox = 'inbox' | 'completed' | 'deleted';
+/** Only notes for now (read / unread). To-dos are household tasks. */
+export type NotificationType = 'note';
+export type NotificationBox = 'inbox' | 'deleted';
 
 /** One item of the user's notification inbox. Known `kind`s are rendered from `data` in the UI language. */
 export interface AppNotification {
@@ -198,8 +200,9 @@ export interface AppNotification {
   title: string;
   body: string | null;
   data: Record<string, unknown>;
+  /** The household task this note is about (clicking opens it) */
+  task_id: string | null;
   viewed_at: string | null;
-  completed_at: string | null;
   deleted_at: string | null;
   created_at: string;
 }
@@ -207,4 +210,71 @@ export interface AppNotification {
 export interface NotificationBarData {
   items: AppNotification[];
   unviewed_count: number;
+}
+
+/** completed = green, overdue = red (past due), expiring = yellow (due within warn_days) */
+export type TaskStatus = 'completed' | 'overdue' | 'expiring' | 'pending';
+
+/** An entry of the household's task categories or locations (managers edit the lists). */
+export interface TaskLabel {
+  id: string;
+  kind: 'category' | 'location';
+  name: string;
+}
+
+export interface TaskSettings {
+  title: string;
+  category_id: string | null;
+  location_id: string | null;
+  description: string | null;
+  /** The task turns yellow (and can notify) this many days before it is due */
+  warn_days: number;
+  notify_expiring: boolean;
+  notify_expired: boolean;
+  assignee_ids: string[];
+}
+
+export interface Task extends TaskSettings {
+  id: string;
+  category_name: string | null;
+  location_name: string | null;
+  /** manual, recurring or month_payment (data then holds the payment) */
+  kind: string;
+  data: Record<string, unknown>;
+  due_date: string | null;
+  status: TaskStatus;
+  recurring_task_id: string | null;
+  created_by_user_id: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  completed_at: string | null;
+  completed_by_name: string | null;
+  can_edit: boolean;
+  can_delete: boolean;
+  can_complete: boolean;
+}
+
+export interface TaskInput extends TaskSettings {
+  due_date: string | null;
+}
+
+export type FrequencyUnit = 'day' | 'week' | 'month';
+/** everyone: managers and residents when each task is created; everyone_guests: plus guests */
+export type AssignMode = 'selected' | 'everyone' | 'everyone_guests';
+
+export interface RecurringTaskInput extends TaskSettings {
+  start_date: string;
+  interval: number;
+  unit: FrequencyUnit;
+  /** Each task is due this many days after its scheduled date (0 = on it) */
+  due_offset_days: number;
+  wait_for_previous: boolean;
+  assign_mode: AssignMode;
+  is_active: boolean;
+}
+
+export interface RecurringTask extends RecurringTaskInput {
+  id: string;
+  last_occurrence_date: string | null;
+  next_date: string | null;
 }

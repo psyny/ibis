@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 def list_notifications(
     box: NotificationBox = "inbox", user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """inbox: not completed and not deleted; completed: completed tasks; deleted: deleted items."""
+    """inbox: not deleted; deleted: deleted items (can be restored)."""
     return NotificationService(db).list_box(user, box)
 
 
@@ -29,16 +29,6 @@ def notification_bar(user: User = Depends(get_current_user), db: Session = Depen
 @router.post("/{notification_id}/view", response_model=NotificationRead)
 def view(notification_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return NotificationService(db).view(user, notification_id)
-
-
-@router.post("/{notification_id}/complete", response_model=NotificationRead)
-def complete(notification_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return NotificationService(db).complete(user, notification_id, True)
-
-
-@router.post("/{notification_id}/uncomplete", response_model=NotificationRead)
-def uncomplete(notification_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return NotificationService(db).complete(user, notification_id, False)
 
 
 @router.post("/{notification_id}/delete", response_model=NotificationRead)

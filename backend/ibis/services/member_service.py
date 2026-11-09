@@ -116,8 +116,9 @@ class MemberService:
         member_ids: list[uuid.UUID],
         label: str,
         already_allowed: Iterable[uuid.UUID] = (),
+        allow_empty: bool = False,
     ) -> list[HouseholdMember]:
-        """Load payers/coverers, checking they can take part in costs.
+        """Load payers/coverers (or task assignees), checking they can take part.
 
         `already_allowed` lets an edit keep people already on the cost even if
         they were disabled since.
@@ -134,9 +135,15 @@ class MemberService:
                 if not is_participant(member.role):
                     raise ValidationError(f"{member.user.display_name} is a viewer and can't be in '{label}'")
             result.append(member)
-        if not result:
+        if not result and not allow_empty:
             raise ValidationError(f"Pick at least one person in '{label}'")
         return sort_members(result)
+
+    def resolve_assignees(
+        self, household_id: uuid.UUID, member_ids: list[uuid.UUID], already_allowed: Iterable[uuid.UUID] = ()
+    ) -> list[HouseholdMember]:
+        """Task assignees: same people as cost participants (no viewers); a task may have none."""
+        return self.resolve_participants(household_id, member_ids, "Assigned to", already_allowed, allow_empty=True)
 
     def _active_manager_count(self, household_id: uuid.UUID) -> int:
         return sum(

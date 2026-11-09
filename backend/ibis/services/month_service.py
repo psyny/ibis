@@ -15,7 +15,7 @@ from repositories.month_repository import MonthRepository
 from schemas.month_schemas import MonthRead
 from services.context import HouseholdContext
 from services.errors import ConflictError, NotFoundError, ValidationError
-from services.notification_service import NotificationService
+from services.task_service import TaskService
 
 
 def month_label(year: int, month: int) -> str:
@@ -27,7 +27,7 @@ class MonthService:
         self.db = db
         self.months = MonthRepository(db)
         self.costs = CostRepository(db)
-        self.notifications = NotificationService(db)
+        self.tasks = TaskService(db)
 
     # --- Automatic housekeeping -------------------------------------------------
     def sync(self, household: Household) -> None:
@@ -51,14 +51,10 @@ class MonthService:
                     month.status = MONTH_CLOSED
                     month.closed_at = datetime.now(timezone.utc)
                     month.closed_by_user_id = None
-                    self.notifications.month_closed(household, month)
+                    self.tasks.month_closed(household, month)
                     changed = True
         if changed:
             self.db.commit()
-
-    def sync_all(self) -> None:
-        for household in self.db.scalars(select(Household)):
-            self.sync(household)
 
     # --- Use cases ----------------------------------------------------------------
     def get(self, household: Household, year: int, month: int) -> HouseholdMonth:
@@ -95,7 +91,7 @@ class MonthService:
         found.status = MONTH_CLOSED
         found.closed_at = datetime.now(timezone.utc)
         found.closed_by_user_id = ctx.user.id
-        self.notifications.month_closed(ctx.household, found)
+        self.tasks.month_closed(ctx.household, found)
         self.db.commit()
         return found
 
@@ -106,7 +102,7 @@ class MonthService:
         found.closed_at = None
         found.closed_by_user_id = None
         found.auto_close_exempt = True  # don't let auto-close undo the manager's decision
-        self.notifications.month_reopened(found)
+        self.tasks.month_reopened(found)
         self.db.commit()
         return found
 

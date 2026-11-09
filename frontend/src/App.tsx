@@ -8,10 +8,13 @@ import { AdminPage } from './pages/AdminPage';
 import { CostFormPage } from './pages/CostFormPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomeRedirect } from './pages/HomeRedirect';
+import { HouseholdHomePage } from './pages/HouseholdHomePage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { PixGenPage } from './pages/PixGenPage';
+import { RecurringTasksPage } from './pages/RecurringTasksPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TasksPage } from './pages/TasksPage';
 import { ToolsPage } from './pages/ToolsPage';
 
 function App() {
@@ -24,10 +27,15 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/" element={<HomeRedirect />} />
-              <Route path="/h/:householdId" element={<DashboardPage />} />
+              <Route path="/h/:householdId" element={<HouseholdHomePage />} />
+              {/* Monthly costs: ?m=YYYY-MM picks a month, &pay=<member> opens the payment sheet */}
+              <Route path="/h/:householdId/costs" element={<DashboardPage />} />
               {/* Shareable link straight to the add-cost screen */}
               <Route path="/h/:householdId/add" element={<CostFormPage />} />
               <Route path="/h/:householdId/costs/:costId" element={<CostFormPage />} />
+              {/* ?task=<id> opens a task */}
+              <Route path="/h/:householdId/tasks" element={<TasksPage />} />
+              <Route path="/h/:householdId/tasks/recurring" element={<RecurringTasksPage />} />
               <Route path="/h/:householdId/settings" element={<SettingsPage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
