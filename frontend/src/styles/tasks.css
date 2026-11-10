@@ -453,3 +453,18 @@
   font-style: italic;
   color: var(--text-secondary);
 }
+
+/* Ways to pay a month-close payment task (TaskModal) */
+.payment-ways {
+  margin-bottom: 16px;
+}
+
+.payment-ways ol {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payment-ways__value {
+  word-break: break-all;
+}

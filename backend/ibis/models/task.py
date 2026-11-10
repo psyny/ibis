@@ -45,7 +45,9 @@ NOTIFY_CHANNEL_FLAGS = (
     "notify_expired_email",
     "notify_expired_groups",
 )
-SHARED_FLAGS = ("notify_expiring", "notify_expired", *NOTIFY_CHANNEL_FLAGS, "is_private")
+# Every notify option of a task (in-app + the channels above)
+NOTIFY_FLAGS = ("notify_expiring", "notify_expired", *NOTIFY_CHANNEL_FLAGS)
+SHARED_FLAGS = (*NOTIFY_FLAGS, "is_private")
 
 task_assignees = _member_link_table("task_assignees", "tasks", "task_id")
 recurring_task_assignees = _member_link_table("recurring_task_assignees", "recurring_tasks", "recurring_task_id")

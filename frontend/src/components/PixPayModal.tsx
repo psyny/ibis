@@ -19,21 +19,30 @@ export interface PixReceiver {
   loadUploadedQr?: () => Promise<string | null>;
 }
 
-interface Props {
+interface SheetProps {
   receiver: PixReceiver;
   amount: number;
   currency: string;
   /** Line under the amount, e.g. "Carla pays Ana" */
   subtitle?: string;
-  onClose: () => void;
 }
 
 /**
  * "Pay X" sheet: a PIX QR code (and copia-e-cola code) with the exact amount when the
  * receiver has a PIX key; otherwise their bank info and uploaded QR image.
- * Used by the split table and by the PIX code generator tool.
+ * Used by the split table, the PIX code generator tool and the public payment page.
  */
-export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: Props) {
+export function PixPayModal({ onClose, ...sheet }: SheetProps & { onClose: () => void }) {
+  const { t } = useI18n();
+  return (
+    <Modal title={t('pay.title', { name: sheet.receiver.name })} onClose={onClose}>
+      <PixPaySheet {...sheet} />
+    </Modal>
+  );
+}
+
+/** The sheet's content, without the modal around it. */
+export function PixPaySheet({ receiver, amount, currency, subtitle }: SheetProps) {
   const showMessage = useMessage();
   const { t } = useI18n();
   const [uploadedQr, setUploadedQr] = useState<string | null>(receiver.uploadedQr ?? null);
@@ -72,7 +81,7 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
   };
 
   return (
-    <Modal title={t('pay.title', { name: receiver.name })} onClose={onClose}>
+    <>
       <p className="pay-amount num">{formatMoney(amount, currency)}</p>
       {subtitle && (
         <p className="muted small" style={{ textAlign: 'center', marginBottom: 12 }}>
@@ -140,6 +149,6 @@ export function PixPayModal({ receiver, amount, currency, subtitle, onClose }: P
           )}
         </div>
       )}
-    </Modal>
+    </>
   );
 }

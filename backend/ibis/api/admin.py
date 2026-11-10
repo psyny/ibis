@@ -48,7 +48,7 @@ def list_households(_: User = Depends(require_admin), db: Session = Depends(get_
 def create_household(data: HouseholdCreate, _: User = Depends(require_admin), db: Session = Depends(get_db)):
     service = HouseholdService(db)
     household = service.create(data)
-    MonthService(db).sync(household)
+    MonthService(db).ensure_months(household)  # the household starts with this month and the next
     return _to_read(service, household)
 
 

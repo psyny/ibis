@@ -29,7 +29,6 @@ class SummaryService:
 
     def month_summary(self, ctx: HouseholdContext, year: int, month: int) -> MonthSummary:
         household = ctx.household
-        self.months.sync(household)
         month_row = self.months.get(household, year, month)
         costs = self.costs.list_for_month(month_row.id)
         members = self.members.list_ordered(household.id)

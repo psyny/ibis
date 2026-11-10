@@ -4,6 +4,7 @@ import pytest
 
 import services.task_service as task_service
 from domain.months import today_in
+from tests.conftest import run_housekeeping
 from tests.integration.test_household_flow import _setup_household
 
 TODAY = today_in("UTC")
@@ -133,15 +134,15 @@ def test_due_date_notifications(client, home, monkeypatch):
     assert _notes(client, h["rui"]) == []  # not in its 3-day window yet
 
     _days_later(monkeypatch, 2)
-    client.get(f"/api/households/{hid}", headers=h["val"])  # opening the household runs the checks
+    run_housekeeping()  # the scheduler runs the checks
     [note] = _notes(client, h["rui"])
     assert note["kind"] == "task_expiring" and note["task_id"] == soon["id"]
     assert len(_notes(client, h["gil"])) == 1
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
     assert len(_notes(client, h["rui"])) == 1  # sent once
 
     _days_later(monkeypatch, 6)
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
     assert [n["kind"] for n in _notes(client, h["rui"])] == ["task_expired", "task_expiring"]
 
     # Completed tasks never notify
@@ -149,7 +150,7 @@ def test_due_date_notifications(client, home, monkeypatch):
     done = _create(client, hid, h["mia"], body)
     client.post(f"/api/households/{hid}/tasks/{done['id']}/complete", headers=h["rui"])
     _days_later(monkeypatch, 30)
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
     assert all(n["task_id"] != done["id"] for n in _notes(client, h["rui"]))
 
 
@@ -194,14 +195,14 @@ def test_recurring_creates_copies_and_waits_for_previous(client, home, monkeypat
 
     # A week later the first copy is still open: that date is skipped
     _days_later(monkeypatch, 7)
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
     assert len(_list(client, hid, h["mia"])) == 1
 
     # Once it's done, the next scheduled date creates a new one (only one, even after several weeks)
     client.post(f"/api/households/{hid}/tasks/{first['id']}/complete", headers=h["rui"])
     _days_later(monkeypatch, 30)
-    client.get(f"/api/households/{hid}", headers=h["val"])
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
+    run_housekeeping()
     [second] = _list(client, hid, h["mia"])
     assert second["due_date"] == (TODAY + timedelta(days=28 + 2)).isoformat()
 
@@ -219,7 +220,7 @@ def test_recurring_without_waiting_and_everyone(client, home, monkeypatch):
     )
     ana = response.json()["id"]
     _days_later(monkeypatch, 1)
-    client.get(f"/api/households/{hid}", headers=h["val"])
+    run_housekeeping()
 
     tasks = _list(client, hid, h["mia"])
     trash = [t for t in tasks if t["title"] == "Take out trash"]

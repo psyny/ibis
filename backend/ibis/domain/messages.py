@@ -127,3 +127,182 @@ def task_due_message(
 
 def test_message(language: str, household: str) -> str:
     return _texts(language)["test"].format(household=household)
+
+
+# --- Month-close payments -------------------------------------------------------------------
+# Titles match the app's "task.monthPayment.title". The ways to pay are numbered as they are listed.
+_PAYMENT_TEXTS: dict[str, dict[str, str]] = {
+    "en": {
+        "title": "Pay {name} {amount}",
+        "intro": "Pay {name} {amount} as your part of the split for {month}.",
+        "ways": "You can pay with:",
+        "key": "A direct transfer to the PIX key: {key}",
+        "bank": "A direct transfer: {bank}",
+        "link": "The Ibis payment page, with QR code: {url}",
+        "code": "The PIX copy-and-paste code in the next message.",
+        "none": "{name} has no payment details in Ibis yet. Ask them directly.",
+    },
+    "pt-BR": {
+        "title": "Pagar {amount} para {name}",
+        "intro": "Pague {amount} para {name}: sua parte da divisão de {month}.",
+        "ways": "Você pode pagar com:",
+        "key": "Uma transferência direta para a chave PIX: {key}",
+        "bank": "Uma transferência direta: {bank}",
+        "link": "A página de pagamento do Ibis, com QR code: {url}",
+        "code": "O código PIX copia e cola na próxima mensagem.",
+        "none": "{name} ainda não tem dados de pagamento no Ibis. Pergunte diretamente.",
+    },
+    "de": {
+        "title": "{name} {amount} zahlen",
+        "intro": "Zahle {name} {amount} als deinen Anteil an der Aufteilung für {month}.",
+        "ways": "So kannst du zahlen:",
+        "key": "Direkte Überweisung an den PIX-Schlüssel: {key}",
+        "bank": "Direkte Überweisung: {bank}",
+        "link": "Die Ibis-Zahlungsseite mit QR-Code: {url}",
+        "code": "Der PIX-Code zum Kopieren in der nächsten Nachricht.",
+        "none": "{name} hat noch keine Zahlungsdaten in Ibis. Frag direkt nach.",
+    },
+    "fr": {
+        "title": "Payer {amount} à {name}",
+        "intro": "Payez {amount} à {name} : votre part du partage de {month}.",
+        "ways": "Vous pouvez payer avec :",
+        "key": "Un virement direct vers la clé PIX : {key}",
+        "bank": "Un virement direct : {bank}",
+        "link": "La page de paiement Ibis, avec QR code : {url}",
+        "code": "Le code PIX copier-coller dans le message suivant.",
+        "none": "{name} n'a pas encore de coordonnées de paiement dans Ibis. Demandez-lui directement.",
+    },
+    "it": {
+        "title": "Paga {amount} a {name}",
+        "intro": "Paga {amount} a {name}: la tua parte della divisione di {month}.",
+        "ways": "Puoi pagare con:",
+        "key": "Un bonifico diretto alla chiave PIX: {key}",
+        "bank": "Un bonifico diretto: {bank}",
+        "link": "La pagina di pagamento di Ibis, con QR code: {url}",
+        "code": "Il codice PIX copia e incolla nel prossimo messaggio.",
+        "none": "{name} non ha ancora dati di pagamento su Ibis. Chiedi direttamente.",
+    },
+    "zh-CN": {
+        "title": "向 {name} 支付 {amount}",
+        "intro": "向 {name} 支付 {amount}，这是你在 {month} 分摊中的份额。",
+        "ways": "你可以通过以下方式支付：",
+        "key": "直接转账到 PIX 密钥：{key}",
+        "bank": "直接转账：{bank}",
+        "link": "Ibis 付款页面（含二维码）：{url}",
+        "code": "下一条消息中的 PIX 复制粘贴码。",
+        "none": "{name} 还没有在 Ibis 中填写付款信息，请直接询问。",
+    },
+    "ja": {
+        "title": "{name} に {amount} を支払う",
+        "intro": "{month} の割り勘のあなたの分として、{name} に {amount} を支払ってください。",
+        "ways": "支払い方法：",
+        "key": "PIX キーへの直接振込：{key}",
+        "bank": "直接振込：{bank}",
+        "link": "Ibis の支払いページ（QR コード付き）：{url}",
+        "code": "次のメッセージの PIX コピー＆ペーストコード。",
+        "none": "{name} はまだ Ibis に支払い情報を登録していません。直接確認してください。",
+    },
+    "ko": {
+        "title": "{name}에게 {amount} 보내기",
+        "intro": "{month} 정산에서 내 몫으로 {name}에게 {amount}을(를) 보내세요.",
+        "ways": "결제 방법:",
+        "key": "PIX 키로 직접 이체: {key}",
+        "bank": "직접 이체: {bank}",
+        "link": "QR 코드가 있는 Ibis 결제 페이지: {url}",
+        "code": "다음 메시지의 PIX 복사·붙여넣기 코드.",
+        "none": "{name}님은 아직 Ibis에 결제 정보가 없습니다. 직접 물어보세요.",
+    },
+    "hi": {
+        "title": "{name} को {amount} दें",
+        "intro": "{month} के बँटवारे में अपने हिस्से के रूप में {name} को {amount} दें।",
+        "ways": "आप इनसे भुगतान कर सकते हैं:",
+        "key": "PIX की पर सीधा ट्रांसफ़र: {key}",
+        "bank": "सीधा ट्रांसफ़र: {bank}",
+        "link": "Ibis भुगतान पेज, QR कोड के साथ: {url}",
+        "code": "अगले संदेश में PIX कॉपी-पेस्ट कोड।",
+        "none": "{name} की भुगतान जानकारी अभी Ibis में नहीं है। सीधे पूछें।",
+    },
+}
+
+_MONTHS: dict[str, tuple[str, ...]] = {
+    "en": ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+           "November", "December"),
+    "pt-BR": ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+              "novembro", "dezembro"),
+    "de": ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
+           "November", "Dezember"),
+    "fr": ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+           "novembre", "décembre"),
+    "it": ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre",
+           "novembre", "dicembre"),
+    "hi": ("जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्तूबर", "नवंबर", "दिसंबर"),
+}
+_MONTH_FORMATS = {"pt-BR": "{name} de {y}", "zh-CN": "{y}年{m}月", "ja": "{y}年{m}月", "ko": "{y}년 {m}월"}
+
+_SYMBOLS = {"BRL": "R$", "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CNY": "¥", "KRW": "₩", "INR": "₹"}
+_THOUSANDS = {"pt-BR": ".", "de": ".", "it": ".", "fr": "\u202f"}  # languages with comma decimals -> thousands separator
+_SYMBOL_AFTER = {"de", "fr", "it"}
+
+
+def _payment_texts(language: str) -> dict[str, str]:
+    return _PAYMENT_TEXTS.get(language, _PAYMENT_TEXTS["en"])
+
+
+def month_label(year: int, month: int, language: str) -> str:
+    """E.g. "November 2026", "novembro de 2026", "2026年11月"."""
+    names = _MONTHS.get(language, _MONTHS["en"])
+    pattern = _MONTH_FORMATS.get(language, "{name} {y}")
+    return pattern.format(name=names[month - 1], y=year, m=month)
+
+
+def format_money(amount: float, currency: str, language: str) -> str:
+    """E.g. "R$ 1.234,56" (pt-BR), "1.234,56 €" (de), "$1,234.56" (en)."""
+    number = f"{amount:,.2f}"
+    thousands = _THOUSANDS.get(language)
+    if thousands:
+        number = number.replace(",", "_").replace(".", ",").replace("_", thousands)
+    symbol = _SYMBOLS.get(currency.upper())
+    if symbol is None:
+        return f"{currency.upper()} {number}"
+    if language in _SYMBOL_AFTER:
+        return f"{number} {symbol}"
+    return f"{symbol} {number}" if len(symbol) > 1 else f"{symbol}{number}"
+
+
+def payment_title(language: str, *, name: str, amount: float, currency: str) -> str:
+    return _payment_texts(language)["title"].format(name=name, amount=format_money(amount, currency, language))
+
+
+def payment_message(
+    language: str,
+    *,
+    name: str,
+    amount: float,
+    currency: str,
+    year: int,
+    month: int,
+    pix_key: Optional[str],
+    bank_info: Optional[str],
+    page_url: Optional[str],
+    has_code: bool,
+) -> str:
+    """How to pay a month's transfer: a direct transfer (PIX key or bank details), the Ibis payment
+    page, and the copy-and-paste code (sent as its own message, so it copies cleanly)."""
+    texts = _payment_texts(language)
+    money = format_money(amount, currency, language)
+    ways = []
+    if pix_key:
+        ways.append(texts["key"].format(key=pix_key))
+    elif bank_info:
+        ways.append(texts["bank"].format(bank=bank_info))
+    if page_url:
+        ways.append(texts["link"].format(url=page_url))
+    if has_code:
+        ways.append(texts["code"])
+    lines = [texts["intro"].format(name=name, amount=money, month=month_label(year, month, language)), ""]
+    if ways:
+        lines.append(texts["ways"])
+        lines += [f"{i}) {way}" for i, way in enumerate(ways, start=1)]
+    else:
+        lines.append(texts["none"].format(name=name))
+    return "\n".join(lines)

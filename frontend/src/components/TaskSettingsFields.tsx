@@ -51,11 +51,13 @@ export function notifySummary(value: TaskSettingsValue, t: ReturnType<typeof use
 interface Props {
   value: TaskSettingsValue;
   onChange: (value: TaskSettingsValue) => void;
+  /** Month-close payment task settings have no Private option */
+  showPrivate?: boolean;
 }
 
 /** "Expiring" warning days, who gets notified (app, WhatsApp, groups, email) and the Private flag.
  * Shared by tasks and recurring tasks. */
-export function TaskSettingsFields({ value, onChange }: Props) {
+export function TaskSettingsFields({ value, onChange, showPrivate = true }: Props) {
   const { t, tn } = useI18n();
   const set = (patch: Partial<TaskSettingsValue>) => onChange({ ...value, ...patch });
 
@@ -104,13 +106,15 @@ export function TaskSettingsFields({ value, onChange }: Props) {
         {group('expired', t('task.notifyExpiredHint'))}
         <span className="form-hint">{t('task.notify.hint')}</span>
       </fieldset>
-      <div className="form-field">
-        <label className="checkbox">
-          <input type="checkbox" checked={value.is_private} onChange={(e) => set({ is_private: e.target.checked })} />
-          {t('task.private')}
-        </label>
-        <span className="form-hint">{t('task.privateHint')}</span>
-      </div>
+      {showPrivate && (
+        <div className="form-field">
+          <label className="checkbox">
+            <input type="checkbox" checked={value.is_private} onChange={(e) => set({ is_private: e.target.checked })} />
+            {t('task.private')}
+          </label>
+          <span className="form-hint">{t('task.privateHint')}</span>
+        </div>
+      )}
     </>
   );
 }

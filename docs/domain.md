@@ -56,6 +56,14 @@ exact amount (via `react-qrcode-pix`). Keys are cleaned up first: CPF/CNPJ to di
 lower case, phones need `+55` (or parentheses) to be told apart from a CPF. Otherwise the sheet shows the
 bank info text and the person's uploaded QR image. Code: `frontend/src/utils/pix.ts`.
 
+The backend builds the same codes (`backend/ibis/domain/pix.py`, a port tested against codes made by the
+frontend), so month-close payment tasks and WhatsApp reminders can carry them.
+
+**Public payment page**: `/pay?key=<PIX key>&name=<receiver>&amount=<30.00>&lang=<language>` shows the
+same sheet (QR code + copy code) with **no sign-in**, so it can be linked from WhatsApp. Everything comes
+from the link and nothing is loaded from the server. Editing the link only changes what the person
+opening it pays. Messages build it from `FRONTEND_URL` (default: the first `CORS_ORIGINS` entry).
+
 ## Costs
 
 A cost has: description (free text, or tap a premade description), optional category, amount,
@@ -70,9 +78,10 @@ should call `CostService.create(ctx, data, source="whatsapp")` so they reuse the
 ## Months
 
 - A cost belongs to the month of its date. The month must exist and be **open**.
-- The current and next month are created automatically (lazily, whenever a household is opened,
-  and at API startup). Managers can create any other month, e.g. further in the future.
-- **Fixed costs** (Settings → Fixed costs; called "recurring costs" in the code): copied into each new month
+- The current and next month are created automatically: when the household is created, then by the
+  scheduler (see **Scheduler** below). Since the next month always exists, a new month is there the moment it
+  starts. Managers can create any other month, e.g. further in the future.
+- **Fixed costs** (Settings → Expenses → Fixed costs; called "recurring costs" in the code): copied into each new month
   on their day of the month (31 becomes the last day in shorter months).
 - **Add fixed costs** (month menu, calendar icon in the top bar, managers/admins): adds the fixed costs
   a month is missing, e.g. after they were adjusted. A fixed cost is skipped when the month already has a
@@ -116,6 +125,8 @@ its own **expiring** setting: how many days before the due date it turns yellow 
   The task menu (top right) has Add task and Recurring tasks.
 - One completion completes the task for everyone assigned (it records who did it).
 - **Notify** (per task, all off by default), for two events: it starts expiring, and it is past due.
+  The scheduler checks this every hour. The only exception is a task that is **created** (or saved with a new
+  due date / expiring days) already inside its warning window or past due: it notifies right away.
   For each event, any of: **in the app** (a note to the assignees), **WhatsApp to the assignees** (their own
   number), **WhatsApp to the household groups**, **email to the assignees** (stored, not sent yet: email isn't
   built). Each event goes out once; changing the due date or the expiring days lets it go out again.
@@ -124,9 +135,19 @@ its own **expiring** setting: how many days before the due date it turns yellow 
   WhatsApp messages about a private task say "a private task" instead of the title; messages to the
   assignees themselves show it. Recurring tasks copy both settings into each task they create.
 - **Month closed** (by a manager or auto-close): everyone who has to pay gets a task per transfer
-  (`kind = month_payment`, category Bills if the household still has it, due 3 days after the close) and a note linking to it. The task's "Open payment"
-  button opens that month's payment sheet. Reopening the month removes the payment tasks not done yet
+  (`kind = month_payment`, category Bills if the household still has it) and a note linking to it, as set in
+  **Settings → Expenses → Month close**: on/off (on by default), due N days after the close (default 3),
+  expiring warning days (default 3) and the same notify options as any task (all off by default). With the
+  defaults the task starts inside its warning window, so its "about to expire" notifications (if turned on)
+  go out at once. The task's "Open payment" button opens that month's payment sheet. Reopening the month removes the payment tasks not done yet
   (and their notes); closing again creates fresh ones (amounts may have changed). Done tasks are kept.
+  - The task saves how to pay, as it was at the close: the receiver's PIX key, the copy-and-paste code
+    for the exact amount (BRL only), or their bank info text when there is no usable key. Its title is
+    stored in the household's language (WhatsApp uses it); the app shows it in each person's language.
+  - The task window lists the ways to pay: a direct transfer (key or bank info), the public payment page,
+    and the copy-and-paste code, each with a copy button. Without any details it says to ask the receiver.
+  - WhatsApp reminders to the payer list the same ways, then send the code alone in a second message
+    so it copies cleanly. Group messages only get the reminder (no codes).
 
 ### Recurring tasks
 
@@ -136,10 +157,10 @@ on its scheduled date (default) or N days after it. Assign to **Everyone** (mana
 **Everyone, including guests**, or chosen people. "Everyone" is resolved each time a copy is created, so it
 follows who lives there.
 
-- There is no worker: copies are created whenever someone opens the household (and at API startup),
-  together with the month housekeeping and the due-date notes (`services/housekeeping.py`).
+- Copies are created by the scheduler's hourly run. Saving a definition whose schedule is already due
+  creates its copy right away (and that copy notifies at once if it starts inside its warning window).
 - Each run creates at most one copy, for the latest scheduled date not handled yet, so missed dates never
-  pile up. A unique (recurring task, date) rule stops two simultaneous visits from creating it twice.
+  pile up. A unique (recurring task, date) rule stops two simultaneous runs from creating it twice.
 - **Wait until the previous one is done** (on by default): if the last copy is still open on a scheduled
   date, that date is skipped.
 - A new definition whose start date is in the past creates one copy right away. Editing the schedule never
@@ -161,6 +182,28 @@ deleted (soft: `deleted_at`, shown in the Deleted tab, can be restored). To-dos 
 
 Code: `backend/ibis/services/notification_service.py`, `frontend/src/utils/notifications.ts`.
 
+## Scheduler
+
+Everything time-based runs in the scheduler (`backend/ibis/scheduler/`), never in a request. Opening a
+household only reads. Requests do only what must happen on the spot: e.g. closing a month creates its
+payment tasks, and a task created already inside its warning window notifies at once.
+
+| Job | Every | Does |
+|-----|-------|------|
+| `housekeeping` | `HOUSEKEEPING_INTERVAL_MINUTES` (60), and once at API start | For each household: create the current and next month, auto-close months, create recurring task copies, send "about to expire" / "expired" notifications |
+| `deliver_messages` | `WHATSAPP_SEND_INTERVAL_SECONDS` (20), only with a WhatsApp service | Send queued WhatsApp messages (with retries) |
+
+- It runs inside the API process (one asyncio loop per job, each run in a thread with its own session).
+  On Postgres an advisory lock makes sure only one process runs a job at a time, so several API instances
+  are safe. One household failing doesn't stop the others.
+- Everything it does is safe to repeat (each notification is sent once, each recurring copy is created once),
+  so a run that comes late or twice changes nothing.
+- Time-based things can lag by up to an hour: e.g. a month auto-closes in the first hour after its deadline.
+- `SCHEDULER_ENABLED=false` turns it off (the tests do; they run jobs themselves).
+- Run a job by hand: `python -m scheduler housekeeping` (from `backend/ibis`).
+- **Adding a job**: write a function taking a database session in `scheduler/jobs.py` and add a `Job(...)`
+  to `JOBS`. Keep the rules in `services/`; the job only calls them.
+
 ## WhatsApp
 
 Sent through a separate service (`whatsapp/`, Node + [Baileys](https://github.com/WhiskeySockets/Baileys)),
@@ -178,8 +221,8 @@ since WhatsApp can block numbers it sees as automated.
   country code get the household's (only BRL households for now: `+55`); the service then asks WhatsApp
   for the right id, which also handles Brazilian numbers with or without the extra 9.
 - Messages are written in the household's language (`domain/messages.py`).
-- **Delivery**: producers only queue rows in `outgoing_messages`; a loop in the API process sends them every
-  `WHATSAPP_SEND_INTERVAL_SECONDS` (20), so a slow or offline WhatsApp never slows a request. Failures are
+- **Delivery**: producers only queue rows in `outgoing_messages`; the scheduler's `deliver_messages` job sends
+  them every `WHATSAPP_SEND_INTERVAL_SECONDS` (20), so a slow or offline WhatsApp never slows a request. Failures are
   retried after 1 min, 5 min, 30 min and 2 h, then marked failed; a bad number or unknown group fails at
   once. Without `WHATSAPP_SERVICE_URL` nothing is queued and Settings → WhatsApp says it's off.
 

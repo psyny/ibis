@@ -6,10 +6,22 @@ from sqlalchemy.orm import Session
 from domain.months import is_valid_timezone, today_in
 from models.household import Household
 from models.member import HouseholdMember
-from schemas.household_schemas import HouseholdCreate, HouseholdPermissions, HouseholdRead, HouseholdUpdate
+from schemas.household_schemas import (
+    HouseholdCreate,
+    HouseholdPermissions,
+    HouseholdRead,
+    HouseholdUpdate,
+    PaymentTaskSettings,
+)
 from services.context import HouseholdContext
 from services.errors import NotFoundError, ValidationError
 from services.task_label_service import TaskLabelService
+
+
+def payment_task_settings(household: Household) -> PaymentTaskSettings:
+    return PaymentTaskSettings(
+        **{field: getattr(household, f"payment_task_{field}") for field in PaymentTaskSettings.model_fields}
+    )
 
 
 class HouseholdService:
@@ -66,6 +78,9 @@ class HouseholdService:
             household.shield_costs_from_guests = data.shield_costs_from_guests
         if data.language:
             household.language = data.language
+        if data.payment_task is not None:
+            for field, value in data.payment_task.model_dump().items():
+                setattr(household, f"payment_task_{field}", value)
         self.db.commit()
         self.db.refresh(household)
         return household
@@ -84,6 +99,7 @@ class HouseholdService:
             auto_close_days=household.auto_close_days,
             shield_costs_from_guests=household.shield_costs_from_guests,
             language=household.language,
+            payment_task=payment_task_settings(household),
             today=today_in(household.timezone),
             my_role=ctx.role.value,
             my_member_id=ctx.member.id if ctx.member else None,

@@ -26,7 +26,14 @@ export function taskTitle(task: Task, t: I18n['t']): string {
 export function taskDescription(task: Task, t: I18n['t']): string | null {
   if (task.is_hidden) return t('task.privateDescription');
   const payment = monthPaymentData(task.kind, task.data);
-  return payment ? t('task.monthPayment.description', { month: monthLabel(payment.year, payment.month) }) : task.description;
+  if (!payment) return task.description;
+  return 'pix_key' in payment
+    ? t('task.monthPayment.intro', {
+        name: payment.to_name,
+        amount: formatMoney(payment.amount, payment.currency),
+        month: monthLabel(payment.year, payment.month),
+      })
+    : t('task.monthPayment.description', { month: monthLabel(payment.year, payment.month) }); // older tasks
 }
 
 /** Short due-date text next to the status color, e.g. "Due in 2 days" or "Overdue by 1 day · Oct 28". */

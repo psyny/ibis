@@ -1,4 +1,3 @@
-import calendar
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
@@ -7,11 +6,13 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from domain.messages import payment_title
 from domain.money import from_cents
 from domain.months import last_day, today_in
+from domain.pix import payment_details
 from domain.roles import MIN_ROLE_ADD_TASK, MIN_ROLE_COMPLETE_ANY_TASK, Role, has_role
 from domain.task_labels import KEY_BILLS, KIND_CATEGORY, KIND_LOCATION
-from domain.tasks import PAYMENT_TASK_DAYS, is_expiring_window, latest_occurrence, task_status
+from domain.tasks import is_expiring_window, latest_occurrence, task_status
 from models.household import Household
 from models.member import HouseholdMember
 from models.month import HouseholdMonth
@@ -22,6 +23,7 @@ from models.task import (
     KIND_MANUAL,
     KIND_MONTH_PAYMENT as TASK_KIND_MONTH_PAYMENT,
     KIND_RECURRING,
+    NOTIFY_FLAGS,
     SHARED_FLAGS,
     RecurringTask,
     Task,
@@ -230,17 +232,22 @@ class TaskService:
 
     # --- Closing months: one payment task per transfer -------------------------------------
     def month_closed(self, household: Household, month: HouseholdMonth) -> None:
-        """Give each person who has to pay a task (due in 3 days) and a note linking to it.
+        """Give each person who has to pay a task and a note linking to it, as the household's
+        payment task settings say (on/off, due N days after the close, warning days, notify options).
 
         Replaces the open payment tasks of an earlier close of the same month (amounts may have
-        changed); completed ones are kept. Flushes; the caller commits.
+        changed); completed ones are kept. A task that starts inside its warning window (or past due)
+        notifies right away. Flushes; the caller commits.
         """
         group = month_group_key(month)
         self._drop_open_group(group)
+        if not household.payment_task_enabled:
+            return
         _, transfers = split_costs(CostRepository(self.db).list_for_month(month.id))
         members = {m.id: m for m in MemberRepository(self.db).list_ordered(household.id)}
-        label = f"{calendar.month_name[month.month]} {month.year}"
-        due = today_in(household.timezone) + timedelta(days=PAYMENT_TASK_DAYS)
+        due =today_in(household.timezone) + timedelta(days=household.payment_task_due_days)
+        settings = {flag: getattr(household, f"payment_task_{flag}") for flag in NOTIFY_FLAGS}
+        created: list[Task] = []
         bills = self.labels.by_key(household.id, KIND_CATEGORY, KEY_BILLS)  # None if a manager deleted it
         for transfer in transfers:
             debtor, creditor = members.get(transfer.debtor), members.get(transfer.creditor)
@@ -255,8 +262,18 @@ class TaskService:
                 "to_name": creditor.user.display_name,
                 "amount": amount,
                 "currency": household.currency,
+                **payment_details(
+                    creditor.user.bank_info_type,
+                    creditor.user.bank_info,
+                    creditor.user.display_name,
+                    amount,
+                    household.currency,
+                ),
             }
-            title = f"Pay {creditor.user.display_name} {household.currency} {amount:.2f} for {label}"
+            # Stored in the household's language (WhatsApp uses it); the app translates from `data`
+            title = payment_title(
+                household.language, name=creditor.user.display_name, amount=amount, currency=household.currency
+            )
             task = Task(
                 household_id=household.id,
                 kind=TASK_KIND_MONTH_PAYMENT,
@@ -265,10 +282,13 @@ class TaskService:
                 data=data,
                 group_key=group,
                 due_date=due,
+                warn_days=household.payment_task_warn_days,
+                **settings,
                 assignees=[debtor],
             )
             self.db.add(task)
             self.db.flush()
+            created.append(task)
             self.notifications.add_note(
                 [debtor.user_id],
                 household_id=household.id,
@@ -278,6 +298,7 @@ class TaskService:
                 task_id=task.id,
                 group_key=group,
             )
+        self._send_due_notifications(household, created)
 
     def month_reopened(self, month: HouseholdMonth) -> None:
         """Amounts can change again, so the month's open payment tasks go away until it closes again."""
@@ -293,11 +314,11 @@ class TaskService:
             self.db.delete(task)
         self.db.flush()
 
-    # --- Housekeeping (no worker: runs whenever the household is opened) ------------------
+    # --- Time-based work (run by the scheduler, see scheduler/jobs.py) ------------------------
     def sync(self, household: Household) -> None:
         """Create due copies of recurring tasks, then send due-date notifications."""
         today = today_in(household.timezone)
-        changed = self._create_recurring(household, today)
+        changed, _created = self._create_recurring(household, today)
         pending = list(
             self.db.scalars(
                 select(Task).where(
@@ -355,14 +376,30 @@ class TaskService:
             )
         return changed
 
-    def _create_recurring(self, household: Household, today: date) -> bool:
+    def start_recurring(self, household: Household, item: RecurringTask) -> None:
+        """Right after a recurring task is saved: a schedule that is already due creates its copy now
+        (and that copy notifies at once if it starts inside its warning window). Commits."""
+        if item.is_active:
+            _changed, created = self._create_recurring(household, today_in(household.timezone), [item])
+            self._send_due_notifications(household, created)
+        self.db.commit()
+
+    def _create_recurring(
+        self, household: Household, today: date, definitions: Optional[list[RecurringTask]] = None
+    ) -> tuple[bool, list[Task]]:
         """For each active recurring task whose latest scheduled date hasn't been handled yet, create
         one copy (missed dates never pile up). With "wait for the previous one", a date that arrives
-        while the last copy is still open is skipped."""
-        definitions = self.db.scalars(
-            select(RecurringTask).where(RecurringTask.household_id == household.id, RecurringTask.is_active.is_(True))
-        ).unique()
+        while the last copy is still open is skipped. Returns (anything changed, the tasks created)."""
+        if definitions is None:
+            definitions = list(
+                self.db.scalars(
+                    select(RecurringTask).where(
+                        RecurringTask.household_id == household.id, RecurringTask.is_active.is_(True)
+                    )
+                ).unique()
+            )
         changed = False
+        created: list[Task] = []
         for item in definitions:
             scheduled = latest_occurrence(item.start_date, item.interval, item.unit, today)
             if scheduled is None or (item.last_occurrence_date and scheduled <= item.last_occurrence_date):
@@ -374,28 +411,28 @@ class TaskService:
                 continue
             try:
                 with self.db.begin_nested():
-                    self.db.add(
-                        Task(
-                            household_id=household.id,
-                            kind=KIND_RECURRING,
-                            title=item.title,
-                            category_id=item.category_id,
-                            location_id=item.location_id,
-                            description=item.description,
-                            data={},
-                            warn_days=item.warn_days,
-                            **{flag: getattr(item, flag) for flag in SHARED_FLAGS},
-                            due_date=scheduled + timedelta(days=item.due_offset_days),
-                            recurring_task_id=item.id,
-                            occurrence_date=scheduled,
-                            created_by_user_id=item.created_by_user_id,
-                            assignees=self._recurring_assignees(item),
-                        )
+                    task = Task(
+                        household_id=household.id,
+                        kind=KIND_RECURRING,
+                        title=item.title,
+                        category_id=item.category_id,
+                        location_id=item.location_id,
+                        description=item.description,
+                        data={},
+                        warn_days=item.warn_days,
+                        **{flag: getattr(item, flag) for flag in SHARED_FLAGS},
+                        due_date=scheduled + timedelta(days=item.due_offset_days),
+                        recurring_task_id=item.id,
+                        occurrence_date=scheduled,
+                        created_by_user_id=item.created_by_user_id,
+                        assignees=self._recurring_assignees(item),
                     )
+                    self.db.add(task)
                     self.db.flush()
+                created.append(task)
             except IntegrityError:
-                pass  # someone opening the household at the same moment already created it
-        return changed
+                pass  # created at the same moment by another run (e.g. the scheduler)
+        return changed, created
 
     def _has_open_copy(self, item: RecurringTask) -> bool:
         return (

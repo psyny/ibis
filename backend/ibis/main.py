@@ -1,6 +1,4 @@
-import asyncio
-import logging
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,48 +16,21 @@ from api.months import router as months_router
 from api.notifications import router as notifications_router
 from api.tasks import router as tasks_router
 from api.whatsapp import router as whatsapp_router
-from db.session import SessionLocal
 from infrastructure.config.settings import settings
+from scheduler import Scheduler
 from services.errors import DomainError
-from services.housekeeping import sync_all
-from services.messaging_service import MessagingService
-
-
-def _deliver_messages() -> None:
-    db = SessionLocal()
-    try:
-        MessagingService(db).deliver_pending()
-    finally:
-        db.close()
-
-
-async def _message_loop() -> None:
-    """Send queued WhatsApp messages every few seconds (only when a WhatsApp service is configured)."""
-    while True:
-        await asyncio.sleep(settings.whatsapp_send_interval_seconds)
-        try:
-            await asyncio.to_thread(_deliver_messages)
-        except Exception:  # keep the loop alive; the messages stay queued
-            logging.getLogger("ibis.messaging").exception("Delivering messages failed")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     print(f"Configured CORS origins: {settings.cors_origin_list}")
-    # Every household: create current/next month, auto-close, recurring tasks, due-date notes.
-    db = SessionLocal()
-    try:
-        sync_all(db)
-    except Exception as exc:  # never block startup (e.g. migrations not applied yet)
-        print(f"Startup household sync skipped: {exc}")
-    finally:
-        db.close()
-    loop = asyncio.create_task(_message_loop()) if settings.whatsapp_service_url else None
+    # Time-based work (months, auto-close, recurring tasks, reminders, WhatsApp delivery): see scheduler/
+    scheduler = Scheduler() if settings.scheduler_enabled else None
+    if scheduler:
+        scheduler.start()
     yield
-    if loop:
-        loop.cancel()
-        with suppress(asyncio.CancelledError):
-            await loop
+    if scheduler:
+        await scheduler.stop()
 
 
 app = FastAPI(title="Ibis", lifespan=lifespan)

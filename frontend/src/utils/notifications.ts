@@ -24,6 +24,10 @@ export interface MonthPaymentData {
   amount: number;
   currency: string;
   household_name: string;
+  /** How to pay, saved at the close (missing on tasks from before this was added) */
+  pix_key?: string | null;
+  pix_code?: string | null;
+  bank_info?: string | null;
 }
 
 /** Payment data of a month-close notification or task. */

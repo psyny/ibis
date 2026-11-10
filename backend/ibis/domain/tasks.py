@@ -8,7 +8,6 @@ TaskStatus = Literal["completed", "overdue", "expiring", "pending"]
 FrequencyUnit = Literal["day", "week", "month"]
 
 DEFAULT_WARN_DAYS = 3
-PAYMENT_TASK_DAYS = 3  # month-close payment tasks are due this many days after the month closes
 
 
 def task_status(due: Optional[date], completed: bool, today: date, warn_days: int) -> TaskStatus:

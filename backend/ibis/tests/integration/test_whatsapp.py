@@ -7,12 +7,15 @@ from datetime import timedelta
 import pytest
 
 from db.session import SessionLocal
+from domain.months import today_in
 from infrastructure import whatsapp
 from infrastructure.config.settings import settings
 from models.messaging import OutgoingMessage
 from services.messaging_service import MessagingService
+from tests.conftest import run_housekeeping
+from tests.integration.test_household_flow import _cost, _setup_household
+from tests.integration.test_notifications import _close
 from tests.integration.test_tasks import TODAY, _create, _days_later, _list, _task
-from tests.integration.test_household_flow import _setup_household
 
 GROUP_JID = "120363000000000001@g.us"
 
@@ -121,7 +124,7 @@ def test_expiring_task_notifies_on_whatsapp(client, home, fake_whatsapp, monkeyp
     assert _messages(client, hid, h["mia"]) == []  # not in its warning window yet
 
     _days_later(monkeypatch, 8)
-    client.get(f"/api/households/{hid}", headers=h["mia"])  # opening the household runs the due-date checks
+    run_housekeeping()  # the scheduler runs the due-date checks
     queued = _messages(client, hid, h["mia"])
     assert sorted(m["recipient_label"] for m in queued) == ["Family", "Rui"]  # Gil has no number
     assert all(m["status"] == "pending" for m in queued)
@@ -133,7 +136,7 @@ def test_expiring_task_notifies_on_whatsapp(client, home, fake_whatsapp, monkeyp
     assert {to for to, _ in fake_whatsapp.sent} == {"5511987654321", GROUP_JID}
     assert all(m["status"] == "sent" for m in _messages(client, hid, h["mia"]))
 
-    client.get(f"/api/households/{hid}", headers=h["mia"])  # sent once only
+    run_housekeeping()  # sent once only
     assert len(_messages(client, hid, h["mia"])) == 2
 
 
@@ -187,3 +190,43 @@ def test_private_tasks_are_hidden_from_people_not_assigned(client, home):
     assert theirs["can_edit"] is False and theirs["can_delete"] is True  # managers can still remove it
     response = client.put(f"/api/households/{hid}/tasks/{task['id']}", json=_task(people, title="x"), headers=h["mia"])
     assert response.status_code == 403
+
+
+def _close_with_debt(client, hid, people, h):
+    """Mia paid 90 for everyone, so Rui and Gil each owe Mia 30. Closes the current month."""
+    settings_body = {"payment_task": {"notify_expiring_whatsapp": True}}  # due in 3 days: expiring at once
+    assert client.put(f"/api/households/{hid}", json=settings_body, headers=h["mia"]).status_code == 200
+    client.post(f"/api/households/{hid}/costs", json=_cost(people, "mia", ["mia", "rui", "gil"], 90), headers=h["mia"])
+    _close(client, hid, h["mia"], today_in("UTC"))
+
+
+def test_payment_reminder_carries_the_pix_code(client, home, fake_whatsapp, monkeypatch):
+    hid, people, h = home
+    monkeypatch.setattr(settings, "frontend_url", "https://ibis.example.com")
+    client.put(f"/api/households/{hid}", json={"language": "pt-BR"}, headers=h["mia"])
+    client.put("/api/me", json={"bank_info_type": "pix", "bank_info": "Mia@Example.com"}, headers=h["mia"])
+    _close_with_debt(client, hid, people, h)
+
+    [task] = _list(client, hid, h["rui"], f"?assignee_id={people['rui']['member']['id']}")
+    assert task["title"] == "Pagar R$ 30,00 para Mia"  # in the household's language
+    assert task["data"]["pix_key"] == "mia@example.com"
+    assert task["data"]["pix_code"].startswith("00020126") and "54" "0530.00" in task["data"]["pix_code"]
+
+    code, details = [m["text"] for m in _messages(client, hid, h["mia"]) if m["recipient_label"] == "Rui"]  # newest first
+    assert details.startswith('⏰ ') and '"Pagar R$ 30,00 para Mia"' in details
+    assert "1) Uma transferência direta para a chave PIX: mia@example.com" in details
+    assert "2) A página de pagamento do Ibis, com QR code: https://ibis.example.com/pay?key=mia%40example.com" in details
+    assert "3) O código PIX copia e cola na próxima mensagem." in details
+    assert code == task["data"]["pix_code"]  # alone, so it copies cleanly
+
+    assert _deliver() == 2
+    assert [text for _to, text in fake_whatsapp.sent] == [details, code]  # in that order
+
+
+def test_payment_reminder_without_a_pix_key(client, home, fake_whatsapp):
+    hid, people, h = home
+    client.put("/api/me", json={"bank_info_type": "other", "bank_info": "Bank 001 / 1234-5"}, headers=h["mia"])
+    _close_with_debt(client, hid, people, h)
+    [details] = [m["text"] for m in _messages(client, hid, h["mia"]) if m["recipient_label"] == "Rui"]
+    assert "1) A direct transfer: Bank 001 / 1234-5" in details
+    assert "payment page" not in details and "2)" not in details  # no PIX key: no code, no page

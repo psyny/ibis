@@ -5,13 +5,16 @@ loop in the API process, see main.py) sends them, retrying a few times when the 
 """
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from domain.messages import MessageEvent, task_due_message
+from domain.messages import MessageEvent, payment_message, task_due_message
 from domain.phones import default_country_for, whatsapp_number
+from domain.pix import payment_page_url
 from infrastructure import whatsapp
+from infrastructure.config.settings import settings
 from models.household import Household
 from models.messaging import (
     CHANNEL_WHATSAPP,
@@ -21,7 +24,7 @@ from models.messaging import (
     OutgoingMessage,
     WhatsAppGroup,
 )
-from models.task import Task
+from models.task import KIND_MONTH_PAYMENT, Task
 from services.member_service import sort_members
 
 log = logging.getLogger("ibis.messaging")
@@ -38,6 +41,16 @@ def _now() -> datetime:
 class MessagingService:
     def __init__(self, db: Session):
         self.db = db
+        self._last_queued: Optional[datetime] = None
+
+    def _next_queue_time(self) -> datetime:
+        """Messages are sent oldest first, so ones queued together must not share a time (the database's
+        now() is the same for a whole transaction, and the Windows clock often repeats too)."""
+        now = _now()
+        if self._last_queued is not None and now <= self._last_queued:
+            now = self._last_queued + timedelta(microseconds=1)
+        self._last_queued = now
+        return now
 
     # --- Producers (they flush; the caller commits) ------------------------------------
     def task_due(self, household: Household, task: Task, event: MessageEvent) -> None:
@@ -54,11 +67,18 @@ class MessagingService:
         )
         if getattr(task, f"notify_{event}_whatsapp") and whatsapp.is_configured():
             country = default_country_for(household.currency)
-            text = text_for()
+            texts = [text_for()]
+            payment = task.data if task.kind == KIND_MONTH_PAYMENT else None
+            if payment:
+                # How to pay; the copy-and-paste code goes alone in its own message so it copies cleanly
+                texts[0] += "\n\n" + self._payment_text(household, payment)
+                if payment.get("pix_code"):
+                    texts.append(payment["pix_code"])
             for member in assignees:
                 number = whatsapp_number(member.user.whatsapp, country)
                 if number:
-                    self.queue_whatsapp(household.id, number, member.user.display_name, text)
+                    for text in texts:
+                        self.queue_whatsapp(household.id, number, member.user.display_name, text)
         if getattr(task, f"notify_{event}_groups") and whatsapp.is_configured():
             text = text_for([m.user.display_name for m in assignees])
             for group in self.active_groups(household.id):
@@ -66,6 +86,25 @@ class MessagingService:
         if getattr(task, f"notify_{event}_email"):
             self._queue_email(household, task, event)
         self.db.flush()
+
+    @staticmethod
+    def _payment_text(household: Household, data: dict) -> str:
+        """The ways to pay a month-close payment task (see domain/messages.py payment_message)."""
+        page_url = None
+        if data.get("pix_code") and settings.app_url:
+            page_url = payment_page_url(settings.app_url, data["pix_key"], data["to_name"], data["amount"], household.language)
+        return payment_message(
+            household.language,
+            name=data["to_name"],
+            amount=data["amount"],
+            currency=data["currency"],
+            year=data["year"],
+            month=data["month"],
+            pix_key=data.get("pix_key"),
+            bank_info=data.get("bank_info"),
+            page_url=page_url,
+            has_code=bool(data.get("pix_code")),
+        )
 
     def queue_whatsapp(self, household_id, recipient: str, label: str, text: str) -> OutgoingMessage:
         message = OutgoingMessage(
@@ -76,6 +115,7 @@ class MessagingService:
             text=text,
             status=STATUS_PENDING,
             attempts=0,
+            created_at=self._next_queue_time(),
         )
         self.db.add(message)
         return message

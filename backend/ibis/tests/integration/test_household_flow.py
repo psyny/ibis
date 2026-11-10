@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from domain.months import next_month, today_in
-from tests.conftest import ADMIN_LOGIN
+from tests.conftest import ADMIN_LOGIN, run_housekeeping
 
 
 def _setup_household(client, admin, login, auto_close_days=None):
@@ -285,6 +285,7 @@ def test_auto_close_past_months(client, admin, login):
     mia = people["mia"]["headers"]
     old = today_in("UTC").replace(day=1) - timedelta(days=40)
     assert client.post(f"/api/households/{hid}/months", json={"year": old.year, "month": old.month}, headers=mia).status_code == 201
+    run_housekeeping()  # the scheduler auto-closes months
     months = {(m["year"], m["month"]): m for m in client.get(f"/api/households/{hid}/months", headers=mia).json()}
     assert months[(old.year, old.month)]["status"] == "closed"
     today = today_in("UTC")
@@ -292,6 +293,7 @@ def test_auto_close_past_months(client, admin, login):
 
     # Reopened by a manager -> stays open
     client.post(f"/api/households/{hid}/months/{old.year}/{old.month}/reopen", headers=mia)
+    run_housekeeping()
     months = {(m["year"], m["month"]): m for m in client.get(f"/api/households/{hid}/months", headers=mia).json()}
     assert months[(old.year, old.month)]["status"] == "open"
 

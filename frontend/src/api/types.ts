@@ -31,6 +31,22 @@ export interface Me extends UserInfo {
   households: MyHousehold[];
 }
 
+/** Month close: a "pay" task for each person who owes money (household setting) */
+export interface PaymentTaskSettings {
+  enabled: boolean;
+  /** Due this many days after the month closes */
+  due_days: number;
+  warn_days: number;
+  notify_expiring: boolean;
+  notify_expired: boolean;
+  notify_expiring_whatsapp: boolean;
+  notify_expiring_email: boolean;
+  notify_expiring_groups: boolean;
+  notify_expired_whatsapp: boolean;
+  notify_expired_email: boolean;
+  notify_expired_groups: boolean;
+}
+
 export interface Household {
   id: string;
   name: string;
@@ -39,6 +55,8 @@ export interface Household {
   auto_close_days: number | null;
   shield_costs_from_guests: boolean;
   language: string;
+  /** What happens when a month closes */
+  payment_task: PaymentTaskSettings;
   today: string;
   my_role: Role;
   my_member_id: string | null;

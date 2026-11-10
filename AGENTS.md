@@ -2,7 +2,7 @@
 
 Household app: people in a household add shared costs, and Ibis shows each month's totals per category and the fewest transfers needed to settle who owes whom. It also keeps household tasks (one-off and recurring), with due dates and reminders.
 
-Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend served by nginx, PostgreSQL 16, and an optional WhatsApp service (Node 20+, Baileys, `whatsapp/`). No separate worker: housekeeping runs when a household is opened, and queued WhatsApp messages are sent by a loop inside the API process.
+Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend served by nginx, PostgreSQL 16, and an optional WhatsApp service (Node 20+, Baileys, `whatsapp/`). Time-based work (new months, auto-close, recurring tasks, reminders, WhatsApp delivery) runs in the scheduler (`backend/ibis/scheduler/`, inside the API process), never in requests: put new periodic work there (see `docs/domain.md`, Scheduler).
 
 ## Where things live
 

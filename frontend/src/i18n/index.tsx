@@ -57,6 +57,11 @@ export function isLanguageCode(value: unknown): value is LanguageCode {
   return typeof value === 'string' && value in DICTIONARIES;
 }
 
+/** Whether this browser already has a language picked (by the person or by an earlier visit). */
+export function hasChosenLanguage(): boolean {
+  return isLanguageCode(localStorage.getItem(STORAGE_KEY));
+}
+
 function initialLanguage(): LanguageCode {
   const stored = localStorage.getItem(STORAGE_KEY);
   return isLanguageCode(stored) ? stored : 'en';

@@ -22,9 +22,7 @@ Month = Annotated[int, Path(ge=1, le=12)]
 
 @router.get("", response_model=list[MonthRead])
 def list_months(ctx: HouseholdContext = Depends(view), db: Session = Depends(get_db)):
-    service = MonthService(db)
-    service.sync(ctx.household)
-    return service.list_months(ctx)
+    return MonthService(db).list_months(ctx)
 
 
 @router.post("", response_model=MonthRead, status_code=201)

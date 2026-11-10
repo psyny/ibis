@@ -5,6 +5,7 @@ import { EmailSection } from '../components/settings/EmailSection';
 import { GeneralSection } from '../components/settings/GeneralSection';
 import { MembersSection } from '../components/settings/MembersSection';
 import { MonthsSection } from '../components/settings/MonthsSection';
+import { PaymentTaskSection } from '../components/settings/PaymentTaskSection';
 import { RecurringSection } from '../components/settings/RecurringSection';
 import { TaskLabelsSection } from '../components/settings/TaskLabelsSection';
 import { WhatsAppSection } from '../components/settings/WhatsAppSection';
@@ -32,6 +33,7 @@ const TABS: Tab[] = [
       { id: 'descriptions', label: 'settings.tab.descriptions' },
       { id: 'fixed', label: 'settings.tab.fixedCosts' },
       { id: 'months', label: 'settings.tab.months' },
+      { id: 'closing', label: 'settings.tab.monthClose' },
     ],
   },
   {
@@ -69,6 +71,8 @@ function SectionContent({ household, tab, sub, reload }: { household: Household;
       return <RecurringSection householdId={hid} currency={household.currency} />;
     case 'expenses/months':
       return <MonthsSection householdId={hid} currency={household.currency} />;
+    case 'expenses/closing':
+      return <PaymentTaskSection key={hid} household={household} onSaved={reload} />;
     case 'tasks/categories':
       return <TaskLabelsSection householdId={hid} kind="category" />;
     case 'tasks/locations':

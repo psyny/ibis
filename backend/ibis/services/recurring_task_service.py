@@ -70,7 +70,7 @@ class RecurringTaskService:
         self._apply(ctx, item, data)
         self.db.add(item)
         self.db.commit()
-        TaskService(self.db).sync(ctx.household)  # a schedule starting today creates its first task now
+        TaskService(self.db).start_recurring(ctx.household, item)  # a schedule already due creates its task now
         self.db.refresh(item)
         return item
 
@@ -83,7 +83,7 @@ class RecurringTaskService:
             yesterday = today_in(ctx.household.timezone) - timedelta(days=1)
             item.last_occurrence_date = latest_occurrence(item.start_date, item.interval, item.unit, yesterday)
         self.db.commit()
-        TaskService(self.db).sync(ctx.household)
+        TaskService(self.db).start_recurring(ctx.household, item)
         self.db.refresh(item)
         return item
 

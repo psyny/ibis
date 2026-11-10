@@ -52,6 +52,16 @@ export function buildPix(rawKey: string, name: string, amount: number | null): P
   }
 }
 
+/**
+ * The public payment page (QR code + copy code) for a transfer; it needs no sign-in, so it can be
+ * linked from WhatsApp. The backend builds the same link (domain/pix.py payment_page_url).
+ */
+export function paymentPageUrl(key: string, name: string, amount: number, lang?: string): string {
+  const params = new URLSearchParams({ key, name, amount: amount.toFixed(2) });
+  if (lang) params.set('lang', lang);
+  return `${window.location.origin}/pay?${params}`;
+}
+
 /** CRC16-CCITT (0xFFFF) as used by the PIX/EMV QR format. Exported for tests. */
 export function crc16(text: string): string {
   let crc = 0xffff;

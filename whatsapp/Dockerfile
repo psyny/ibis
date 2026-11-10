@@ -10,7 +10,7 @@ COPY src ./src
 ENV NODE_ENV=production
 ENV DATA_DIR=/data/sessions
 # Login data must survive restarts: mount a volume at /data
-VOLUME /data
+# (no VOLUME line here: Railway refuses Dockerfiles that use it)
 
 EXPOSE 3001
 

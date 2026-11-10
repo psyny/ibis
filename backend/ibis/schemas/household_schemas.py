@@ -9,6 +9,25 @@ from domain.roles import Role
 from schemas.user_schemas import BankInfoType
 
 
+class PaymentTaskSettings(BaseModel):
+    """What happens when a month closes: a "pay" task for each person who owes money."""
+
+    enabled: bool = True
+    # Due this many days after the month closes (always counted from the close)
+    due_days: int = Field(3, ge=0, le=365)
+    # Turns yellow (and can notify) this many days before it is due
+    warn_days: int = Field(3, ge=0, le=365)
+    # Same notify options as a task
+    notify_expiring: bool = False
+    notify_expired: bool = False
+    notify_expiring_whatsapp: bool = False
+    notify_expiring_email: bool = False
+    notify_expiring_groups: bool = False
+    notify_expired_whatsapp: bool = False
+    notify_expired_email: bool = False
+    notify_expired_groups: bool = False
+
+
 class HouseholdCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     currency: str = Field("USD", min_length=3, max_length=3)
@@ -27,6 +46,8 @@ class HouseholdUpdate(BaseModel):
     disable_auto_close: bool = False
     shield_costs_from_guests: Optional[bool] = None
     language: Optional[LanguageCode] = None
+    # Replaces all the month-close payment task settings at once
+    payment_task: Optional[PaymentTaskSettings] = None
 
 
 class HouseholdPermissions(BaseModel):
@@ -44,6 +65,7 @@ class HouseholdRead(BaseModel):
     auto_close_days: Optional[int] = None
     shield_costs_from_guests: bool = False
     language: str = DEFAULT_LANGUAGE
+    payment_task: PaymentTaskSettings = PaymentTaskSettings()
     today: date
     my_role: str
     my_member_id: Optional[uuid.UUID] = None

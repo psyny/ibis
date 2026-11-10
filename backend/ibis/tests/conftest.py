@@ -14,6 +14,7 @@ TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", "sqlite:///" + os.path.join(tempfile.gettempdir(), "ibis_test.sqlite3").replace("\\", "/")
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL  # must happen before importing the app
+os.environ["SCHEDULER_ENABLED"] = "false"  # tests run jobs themselves (see run_housekeeping)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -21,6 +22,9 @@ import models  # noqa: E402,F401
 from db.base import Base  # noqa: E402
 from db.session import engine  # noqa: E402
 from main import app  # noqa: E402
+
+from scheduler import run_job  # noqa: E402
+from scheduler.jobs import JOBS  # noqa: E402
 
 ADMIN_LOGIN = "admin"
 ADMIN_PASSWORD = "admin-pass"
@@ -53,3 +57,8 @@ def login(client) -> Callable[[str, str], dict]:
 def admin(login) -> dict:
     """Headers of the bootstrap admin (first login creates it)."""
     return login(ADMIN_LOGIN, ADMIN_PASSWORD)
+
+
+def run_housekeeping() -> None:
+    """Run the scheduler's hourly job now (months, auto-close, recurring tasks, task reminders)."""
+    run_job(next(job for job in JOBS if job.name == "housekeeping"))

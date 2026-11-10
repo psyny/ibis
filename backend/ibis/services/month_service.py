@@ -29,19 +29,31 @@ class MonthService:
         self.costs = CostRepository(db)
         self.tasks = TaskService(db)
 
-    # --- Automatic housekeeping -------------------------------------------------
+    # --- Time-based work (run by the scheduler, see scheduler/jobs.py) ------------------------
     def sync(self, household: Household) -> None:
-        """Make sure the current and next month exist, and auto-close months past their deadline.
+        """Make sure the current and next month exist, and auto-close months past their deadline."""
+        changed = self._ensure_months(household)
+        changed |= self._auto_close(household)
+        if changed:
+            self.db.commit()
 
-        Called lazily whenever a household is read, so no background worker is needed.
-        """
+    def ensure_months(self, household: Household) -> None:
+        """Create the current and next month if missing (also right after a household is created)."""
+        if self._ensure_months(household):
+            self.db.commit()
+
+    def _ensure_months(self, household: Household) -> bool:
         today = today_in(household.timezone)
         current = (today.year, today.month)
         changed = False
         for year, month in (current, next_month(*current)):
             if self.months.get(household.id, year, month) is None:
                 changed |= self._create_with_recurring(household, year, month) is not None
+        return changed
 
+    def _auto_close(self, household: Household) -> bool:
+        today = today_in(household.timezone)
+        changed = False
         if household.auto_close_days is not None:
             for month in self.months.list_for_household(household.id):
                 if month.status != MONTH_OPEN or month.auto_close_exempt:
@@ -53,8 +65,7 @@ class MonthService:
                     month.closed_by_user_id = None
                     self.tasks.month_closed(household, month)
                     changed = True
-        if changed:
-            self.db.commit()
+        return changed
 
     # --- Use cases ----------------------------------------------------------------
     def get(self, household: Household, year: int, month: int) -> HouseholdMonth:
@@ -125,7 +136,6 @@ class MonthService:
 
     def open_month_for_date(self, household: Household, day: date) -> HouseholdMonth:
         """The month a cost on `day` belongs to; it must exist and be open."""
-        self.sync(household)
         found = self.months.get(household.id, day.year, day.month)
         if found is None:
             raise ValidationError(

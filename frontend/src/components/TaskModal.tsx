@@ -8,6 +8,7 @@ import { longDate } from '../utils/format';
 import { monthPaymentData, notificationsChanged, paymentLink } from '../utils/notifications';
 import { dueText, taskDescription, taskTitle } from '../utils/tasks';
 import { Modal } from './Modal';
+import { PaymentWays } from './PaymentWays';
 import { PersonChips } from './PersonChips';
 import { LabelChips, notifySummary, TaskSettingsFields, TaskSettingsValue, taskSettingsOf } from './TaskSettingsFields';
 
@@ -98,6 +99,7 @@ function TaskDetails({ householdId, task, members, today, onClose, onEdit, onCha
         {done ? t('task.status.completed') : dueText(task, today, i18n)}
       </div>
       <p className={`task-detail__description${description ? '' : ' muted'}`}>{description || t('task.noDescription')}</p>
+      {payment && 'pix_key' in payment && !done && <PaymentWays payment={payment} />}
       <dl className="task-detail__facts">
         <dt>{t('task.category')}</dt>
         <dd>{task.category_name || t('task.noCategory')}</dd>

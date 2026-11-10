@@ -17,6 +17,9 @@ CORS_ORIGINS=https://<your-frontend>.up.railway.app
 RUN_MIGRATIONS_ON_STARTUP=true
 ```
 
+Optional: `FRONTEND_URL=https://<your-frontend>.up.railway.app`, the address used for links in WhatsApp
+messages (the payment page). Without it the first `CORS_ORIGINS` entry is used.
+
 The container waits for Postgres, runs `alembic upgrade head`, then starts uvicorn on `$PORT`.
 Health check path: `/health`.
 
@@ -30,6 +33,7 @@ Health check path: `/health`.
 - Source: this repo, **Root directory** `whatsapp`, Dockerfile `Dockerfile`.
 - Add a **volume** mounted at `/data` (the linked numbers' login data; without it every deploy unlinks them).
 - No public domain needed: the API reaches it on Railway's private network.
+- Health check path: `/health`.
 - Variables:
 
 ```

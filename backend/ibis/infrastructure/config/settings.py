@@ -16,13 +16,19 @@ class Settings(BaseSettings):
 
     # Deployment configuration
     cors_origins: str = "http://localhost:3000"
+    # The app's address, for links in messages (e.g. the payment page). Empty = the first CORS origin.
+    frontend_url: str = ""
     run_migrations_on_startup: bool = False
     log_level: str = "info"
+
+    # Scheduler (scheduler/): time-based work runs inside the API process. Tests turn it off.
+    scheduler_enabled: bool = True
+    housekeeping_interval_minutes: int = 60  # months, auto-close, recurring tasks, task reminders
 
     # WhatsApp service (../whatsapp, Baileys). Empty URL = WhatsApp is off.
     whatsapp_service_url: str = ""
     whatsapp_service_token: str = ""
-    whatsapp_send_interval_seconds: int = 20  # how often queued messages are delivered
+    whatsapp_send_interval_seconds: int = 20  # how often queued messages are delivered (scheduler)
 
     # Uploads
     max_qr_image_kb: int = 1024
@@ -43,6 +49,12 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def app_url(self) -> str:
+        """Where the frontend lives, without a trailing slash ("" if unknown)."""
+        url = self.frontend_url or next((o for o in self.cors_origin_list if o.startswith("http")), "")
+        return url.rstrip("/")
 
     @model_validator(mode="after")
     def validate_production_settings(self):

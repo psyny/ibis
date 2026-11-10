@@ -11,6 +11,7 @@ import { HomeRedirect } from './pages/HomeRedirect';
 import { HouseholdHomePage } from './pages/HouseholdHomePage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { PayPage } from './pages/PayPage';
 import { PixGenPage } from './pages/PixGenPage';
 import { RecurringTasksPage } from './pages/RecurringTasksPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -25,6 +26,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/pay" element={<PayPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/" element={<HomeRedirect />} />
               <Route path="/h/:householdId" element={<HouseholdHomePage />} />

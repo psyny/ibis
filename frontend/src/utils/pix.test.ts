@@ -1,4 +1,4 @@
-import { buildPix, crc16 } from './pix';
+import { buildPix, crc16, paymentPageUrl } from './pix';
 
 describe('buildPix', () => {
   it('builds a valid copia-e-cola code with the amount', () => {
@@ -26,5 +26,13 @@ describe('buildPix', () => {
   it('explains keys that cannot be used', () => {
     expect(() => buildPix('+55 21 993815-1593', 'Ana', 5)).toThrow(/10 digits after the area code/);
     expect(() => buildPix('hello world', 'Ana', 5)).toThrow(/not a PIX key/);
+  });
+});
+
+describe('paymentPageUrl', () => {
+  it('builds the same link as the backend (domain/pix.py payment_page_url)', () => {
+    const url = new URL(paymentPageUrl('mia@x.com', 'Mia Souza', 30, 'pt-BR'));
+    expect(url.pathname).toBe('/pay');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ key: 'mia@x.com', name: 'Mia Souza', amount: '30.00', lang: 'pt-BR' });
   });
 });

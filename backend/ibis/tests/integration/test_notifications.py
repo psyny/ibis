@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from domain.months import today_in
+from tests.conftest import run_housekeeping
 from tests.integration.test_household_flow import _cost, _setup_household
 
 
@@ -98,7 +99,7 @@ def test_auto_close_creates_payment_tasks(client, admin, login):
     assert client.post(f"/api/households/{hid}/costs", json=body, headers=mia).status_code == 201
 
     assert client.put(f"/api/households/{hid}", json={"auto_close_days": 3}, headers=mia).status_code == 200
-    client.get(f"/api/households/{hid}/months", headers=mia)  # triggers auto-close
+    run_housekeeping()  # the scheduler auto-closes the month
     [note] = _box(client, rui)
     assert note["data"]["amount"] == 25 and note["data"]["month"] == old.month
     [task] = _tasks(client, hid, rui)

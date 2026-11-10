@@ -27,6 +27,7 @@ ibis/
         ├── main.py               # API entry point
         ├── api/                  # HTTP routes (thin)
         ├── services/             # Use cases (HTTP-independent, reusable by future bots)
+        ├── scheduler/            # Time-based jobs (hourly housekeeping, WhatsApp delivery)
         ├── domain/               # Pure rules: roles, money, settlement algorithm
         ├── repositories/         # Query helpers
         ├── models/               # SQLAlchemy tables
@@ -98,7 +99,7 @@ make fe-build fe-tests   # frontend typecheck/build + unit tests
 | `/h/:householdId/costs/:costId` | Edit/delete a cost |
 | `/h/:householdId/tasks` | Household tasks (red overdue, yellow expiring, green done) with filters. `?task=<id>` opens one |
 | `/h/:householdId/tasks/recurring` | Managers and residents: recurring task definitions |
-| `/h/:householdId/settings` | Managers. Tabs: General, Members, WhatsApp, Email (soon), Expenses (categories, descriptions, fixed costs, months), Tasks (categories, locations) |
+| `/h/:householdId/settings` | Managers. Tabs: General, Members, WhatsApp, Email (soon), Expenses (categories, descriptions, fixed costs, months, month close), Tasks (categories, locations) |
 | `/account` | Your name, payment info (transfer number, QR code), WhatsApp, email, password |
 | `/admin` | App admin: households and accounts |
 

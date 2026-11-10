@@ -9,6 +9,7 @@ import type {
   MemberDetail,
   MonthInfo,
   MonthSummary,
+  PaymentTaskSettings,
   Preset,
   RecurringCost,
   RecurringCostInput,
@@ -21,7 +22,16 @@ const base = (householdId: string) => `/api/households/${householdId}`;
 export const getHousehold = (hid: string) => request<Household>(base(hid));
 export const updateHousehold = (
   hid: string,
-  data: { name?: string; currency?: string; timezone?: string; auto_close_days?: number | null; disable_auto_close?: boolean; shield_costs_from_guests?: boolean; language?: string },
+  data: {
+    name?: string;
+    currency?: string;
+    timezone?: string;
+    auto_close_days?: number | null;
+    disable_auto_close?: boolean;
+    shield_costs_from_guests?: boolean;
+    language?: string;
+    payment_task?: PaymentTaskSettings;
+  },
 ) => request<Household>(base(hid), { method: 'PUT', body: data });
 
 // Members
