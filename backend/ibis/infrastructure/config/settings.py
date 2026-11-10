@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     run_migrations_on_startup: bool = False
     log_level: str = "info"
 
+    # WhatsApp service (../whatsapp, Baileys). Empty URL = WhatsApp is off.
+    whatsapp_service_url: str = ""
+    whatsapp_service_token: str = ""
+    whatsapp_send_interval_seconds: int = 20  # how often queued messages are delivered
+
     # Uploads
     max_qr_image_kb: int = 1024
 
@@ -44,6 +49,8 @@ class Settings(BaseSettings):
         if self.app_env == "production":
             if not self.jwt_secret_key or self.jwt_secret_key == "change-this-in-production":
                 raise ValueError("JWT_SECRET_KEY must be set to a secure value in production")
+            if self.whatsapp_service_url and not self.whatsapp_service_token:
+                raise ValueError("WHATSAPP_SERVICE_TOKEN must be set when WHATSAPP_SERVICE_URL is")
         return self
 
 

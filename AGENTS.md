@@ -2,7 +2,7 @@
 
 Household app: people in a household add shared costs, and Ibis shows each month's totals per category and the fewest transfers needed to settle who owes whom. It also keeps household tasks (one-off and recurring), with due dates and reminders.
 
-Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend served by nginx, PostgreSQL 16. No queue or worker.
+Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend served by nginx, PostgreSQL 16, and an optional WhatsApp service (Node 20+, Baileys, `whatsapp/`). No separate worker: housekeeping runs when a household is opened, and queued WhatsApp messages are sent by a loop inside the API process.
 
 ## Where things live
 
@@ -12,6 +12,7 @@ Stack: FastAPI + SQLAlchemy + Alembic backend, React/Vite (TypeScript) frontend 
 | Backend API | `backend/ibis/` | `main.py` (`uvicorn main:app`, `PYTHONPATH=backend/ibis`) |
 | Migrations | `backend/ibis/alembic/versions/` | |
 | Tests | `backend/ibis/tests/` (`unit/`, `integration/`) | |
+| WhatsApp service | `whatsapp/` | `src/server.js` (HTTP API for the backend; `test/`) |
 
 Backend layers, outside in: `api/` (thin HTTP routes, auth dependencies) → `services/` (use cases, HTTP-independent) → `repositories/` + `models/` (data). `domain/` holds pure rules (roles, money, settlement) with no database or HTTP code. Keep that separation.
 
@@ -31,6 +32,7 @@ make down                # stop
 make be-tests            # backend unit + API tests on SQLite, no Docker needed
 make be-tests-postgres   # same tests against the Docker Postgres test DB
 make fe-build fe-tests   # frontend typecheck/build + unit tests
+make wa-tests            # WhatsApp service HTTP tests (Node 20+; Baileys refuses older Node)
 ```
 
 On Windows, `make.bat <target>` has the same targets (`make.bat help` lists them; it also starts Docker Desktop if needed). Keep `make.bat` and the `Makefile` in sync. `make.bat reset-db` and `make clean` delete local data.

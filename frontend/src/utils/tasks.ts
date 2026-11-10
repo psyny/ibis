@@ -16,6 +16,7 @@ export function daysBetween(from: string, to: string): number {
 
 /** The task's title in the interface language (month-close payment tasks are built from their data). */
 export function taskTitle(task: Task, t: I18n['t']): string {
+  if (task.is_hidden) return t('task.privateTitle'); // private, and you're not assigned
   const payment = monthPaymentData(task.kind, task.data);
   return payment
     ? t('task.monthPayment.title', { name: payment.to_name, amount: formatMoney(payment.amount, payment.currency) })
@@ -23,6 +24,7 @@ export function taskTitle(task: Task, t: I18n['t']): string {
 }
 
 export function taskDescription(task: Task, t: I18n['t']): string | null {
+  if (task.is_hidden) return t('task.privateDescription');
   const payment = monthPaymentData(task.kind, task.data);
   return payment ? t('task.monthPayment.description', { month: monthLabel(payment.year, payment.month) }) : task.description;
 }

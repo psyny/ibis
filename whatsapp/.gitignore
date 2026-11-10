@@ -1,0 +1,3 @@
+node_modules/
+# WhatsApp login data: never commit it (anyone with it can use the number)
+data/

@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from models.task import (
     KIND_MANUAL,
     KIND_MONTH_PAYMENT as TASK_KIND_MONTH_PAYMENT,
     KIND_RECURRING,
+    SHARED_FLAGS,
     RecurringTask,
     Task,
     task_assignees,
@@ -33,6 +34,7 @@ from schemas.task_schemas import TaskCreate, TaskRead, TaskUpdate
 from services.context import HouseholdContext
 from services.errors import NotFoundError, PermissionDeniedError
 from services.member_service import MemberService, sort_members
+from services.messaging_service import MessagingService
 from services.notification_service import NotificationService
 from services.split import split_costs
 from services.task_label_service import TaskLabelService
@@ -44,6 +46,12 @@ def _now() -> datetime:
 
 def month_group_key(month: HouseholdMonth) -> str:
     return f"month_payment:{month.household_id}:{month.year:04d}-{month.month:02d}"
+
+
+def _wants(event: str):
+    """SQL: the task asks for any notification (in-app or another channel) on this event."""
+    columns = [getattr(Task, f"notify_{event}{suffix}") for suffix in ("", "_whatsapp", "_email", "_groups")]
+    return or_(*columns)
 
 
 def _active(members: list[HouseholdMember]) -> list[HouseholdMember]:
@@ -58,6 +66,7 @@ class TaskService:
         self.db = db
         self.members = MemberService(db)
         self.notifications = NotificationService(db)
+        self.messaging = MessagingService(db)
         self.labels = TaskLabelService(db)
 
     # --- Permissions -----------------------------------------------------------------------
@@ -68,9 +77,17 @@ class TaskService:
     def can_see(self, ctx: HouseholdContext, task: Task) -> bool:
         return ctx.sees_all_tasks or self.is_assigned(ctx, task)
 
+    def is_hidden(self, ctx: HouseholdContext, task: Task) -> bool:
+        """A private task's title and description are only for the people assigned to it."""
+        return task.is_private and not self.is_assigned(ctx, task)
+
+    def can_edit(self, ctx: HouseholdContext, task: Task) -> bool:
+        """Managers edit any task; residents the ones they added. Nobody edits a task they can't read."""
+        return not self.is_hidden(ctx, task) and self.can_delete(ctx, task)
+
     @staticmethod
-    def can_edit(ctx: HouseholdContext, task: Task) -> bool:
-        """Managers edit/delete any task; residents the ones they added."""
+    def can_delete(ctx: HouseholdContext, task: Task) -> bool:
+        """Managers delete any task; residents the ones they added."""
         if ctx.can_manage:
             return True
         return ctx.can_add_task and task.created_by_user_id == ctx.user.id
@@ -118,20 +135,21 @@ class TaskService:
 
     def to_read(self, ctx: HouseholdContext, task: Task, today: Optional[date] = None) -> TaskRead:
         today = today or today_in(ctx.household.timezone)
+        hidden = self.is_hidden(ctx, task)
         return TaskRead(
             id=task.id,
-            title=task.title,
+            title="" if hidden else task.title,
             category_id=task.category_id,
             category_name=task.category.name if task.category else None,
             location_id=task.location_id,
             location_name=task.location.name if task.location else None,
-            description=task.description,
+            description=None if hidden else task.description,
             kind=task.kind,
-            data=task.data or {},
+            data={} if hidden else (task.data or {}),
             due_date=task.due_date,
             warn_days=task.warn_days,
-            notify_expiring=task.notify_expiring,
-            notify_expired=task.notify_expired,
+            **{flag: getattr(task, flag) for flag in SHARED_FLAGS},
+            is_hidden=hidden,
             status=task_status(task.due_date, task.is_completed, today, task.warn_days),
             assignee_ids=[m.id for m in sort_members(task.assignees)],
             recurring_task_id=task.recurring_task_id,
@@ -141,7 +159,7 @@ class TaskService:
             completed_at=task.completed_at,
             completed_by_name=self._user_name(task.completed_by_user_id),
             can_edit=self.can_edit(ctx, task),
-            can_delete=self.can_edit(ctx, task),
+            can_delete=self.can_delete(ctx, task),
             can_complete=self.can_complete(ctx, task),
         )
 
@@ -178,7 +196,7 @@ class TaskService:
 
     def delete(self, ctx: HouseholdContext, task_id: uuid.UUID) -> None:
         task = self.get(ctx, task_id)
-        if not self.can_edit(ctx, task):
+        if not self.can_delete(ctx, task):
             raise PermissionDeniedError("You can only delete tasks you added")
         self.notifications.drop_for_tasks([task.id])
         self.db.delete(task)
@@ -206,8 +224,8 @@ class TaskService:
         task.description = (data.description or "").strip() or None
         task.due_date = data.due_date
         task.warn_days = data.warn_days
-        task.notify_expiring = data.notify_expiring
-        task.notify_expired = data.notify_expired
+        for flag in SHARED_FLAGS:
+            setattr(task, flag, getattr(data, flag))
         task.assignees = self.members.resolve_assignees(ctx.household.id, data.assignee_ids, current_ids)
 
     # --- Closing months: one payment task per transfer -------------------------------------
@@ -286,8 +304,8 @@ class TaskService:
                     Task.household_id == household.id,
                     Task.completed_at.is_(None),
                     Task.due_date.is_not(None),
-                    (Task.notify_expiring & Task.expiring_notified_at.is_(None))
-                    | (Task.notify_expired & Task.expired_notified_at.is_(None)),
+                    (_wants("expiring") & Task.expiring_notified_at.is_(None))
+                    | (_wants("expired") & Task.expired_notified_at.is_(None)),
                 )
             ).unique()
         )
@@ -296,28 +314,36 @@ class TaskService:
             self.db.commit()
 
     def _send_due_notifications(self, household: Household, tasks: list[Task], today: Optional[date] = None) -> bool:
-        """'Expiring' when a task enters its warning window, 'expired' once it is past due (each sent once)."""
+        """'Expiring' when a task enters its warning window, 'expired' once it is past due (each sent once).
+
+        Each event goes to whatever the task's flags ask for: an in-app note to the assignees, and/or
+        WhatsApp (assignees, household groups) and email (placeholder) through MessagingService.
+        """
         today = today or today_in(household.timezone)
         changed = False
         for task in tasks:
             if task.is_completed or task.due_date is None:
                 continue
-            kind = None
+            event = None
             if task.due_date < today:
-                if task.notify_expired and task.expired_notified_at is None:
-                    kind = KIND_TASK_EXPIRED
+                if task.notify_any("expired") and task.expired_notified_at is None:
+                    event = "expired"
                     task.expired_notified_at = _now()
                 if task.expiring_notified_at is None:
                     task.expiring_notified_at = _now()  # its warning window has passed
                     changed = True
-            elif task.notify_expiring and task.expiring_notified_at is None and is_expiring_window(
+            elif task.notify_any("expiring") and task.expiring_notified_at is None and is_expiring_window(
                 task.due_date, today, task.warn_days
             ):
-                kind = KIND_TASK_EXPIRING
+                event = "expiring"
                 task.expiring_notified_at = _now()
-            if kind is None:
+            if event is None:
                 continue
             changed = True
+            self.messaging.task_due(household, task, event)
+            if not getattr(task, f"notify_{event}"):
+                continue  # no in-app note asked for
+            kind = KIND_TASK_EXPIRED if event == "expired" else KIND_TASK_EXPIRING
             word = "is overdue" if kind == KIND_TASK_EXPIRED else "is due soon"
             self.notifications.add_note(
                 [m.user_id for m in _active(task.assignees)],
@@ -358,8 +384,7 @@ class TaskService:
                             description=item.description,
                             data={},
                             warn_days=item.warn_days,
-                            notify_expiring=item.notify_expiring,
-                            notify_expired=item.notify_expired,
+                            **{flag: getattr(item, flag) for flag in SHARED_FLAGS},
                             due_date=scheduled + timedelta(days=item.due_offset_days),
                             recurring_task_id=item.id,
                             occurrence_date=scheduled,

@@ -7,6 +7,7 @@ from models.month import HouseholdMonth
 from models.cost import Cost, RecurringCost
 from models.task import RecurringTask, Task, TaskLabel
 from models.notification import Notification
+from models.messaging import OutgoingMessage, WhatsAppGroup
 
 __all__ = [
     "User",
@@ -21,4 +22,6 @@ __all__ = [
     "Task",
     "TaskLabel",
     "Notification",
+    "OutgoingMessage",
+    "WhatsAppGroup",
 ]

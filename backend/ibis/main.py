@@ -1,4 +1,6 @@
-from contextlib import asynccontextmanager
+import asyncio
+import logging
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,10 +17,30 @@ from api.households import router as households_router
 from api.months import router as months_router
 from api.notifications import router as notifications_router
 from api.tasks import router as tasks_router
+from api.whatsapp import router as whatsapp_router
 from db.session import SessionLocal
 from infrastructure.config.settings import settings
 from services.errors import DomainError
 from services.housekeeping import sync_all
+from services.messaging_service import MessagingService
+
+
+def _deliver_messages() -> None:
+    db = SessionLocal()
+    try:
+        MessagingService(db).deliver_pending()
+    finally:
+        db.close()
+
+
+async def _message_loop() -> None:
+    """Send queued WhatsApp messages every few seconds (only when a WhatsApp service is configured)."""
+    while True:
+        await asyncio.sleep(settings.whatsapp_send_interval_seconds)
+        try:
+            await asyncio.to_thread(_deliver_messages)
+        except Exception:  # keep the loop alive; the messages stay queued
+            logging.getLogger("ibis.messaging").exception("Delivering messages failed")
 
 
 @asynccontextmanager
@@ -32,7 +54,12 @@ async def lifespan(_app: FastAPI):
         print(f"Startup household sync skipped: {exc}")
     finally:
         db.close()
+    loop = asyncio.create_task(_message_loop()) if settings.whatsapp_service_url else None
     yield
+    if loop:
+        loop.cancel()
+        with suppress(asyncio.CancelledError):
+            await loop
 
 
 app = FastAPI(title="Ibis", lifespan=lifespan)
@@ -62,3 +89,4 @@ app.include_router(months_router)
 app.include_router(costs_router)
 app.include_router(notifications_router)
 app.include_router(tasks_router)
+app.include_router(whatsapp_router)

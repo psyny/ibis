@@ -19,6 +19,15 @@ class _TaskSettingsIn(BaseModel):
     warn_days: int = Field(DEFAULT_WARN_DAYS, ge=0, le=365)
     notify_expiring: bool = False
     notify_expired: bool = False
+    # Outside the app: assignees on WhatsApp / email, the household's WhatsApp groups
+    notify_expiring_whatsapp: bool = False
+    notify_expiring_email: bool = False
+    notify_expiring_groups: bool = False
+    notify_expired_whatsapp: bool = False
+    notify_expired_email: bool = False
+    notify_expired_groups: bool = False
+    # Only the assignees see the title and description
+    is_private: bool = False
     assignee_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
@@ -44,6 +53,15 @@ class TaskRead(BaseModel):
     warn_days: int
     notify_expiring: bool
     notify_expired: bool
+    notify_expiring_whatsapp: bool = False
+    notify_expiring_email: bool = False
+    notify_expiring_groups: bool = False
+    notify_expired_whatsapp: bool = False
+    notify_expired_email: bool = False
+    notify_expired_groups: bool = False
+    is_private: bool = False
+    # A private task seen by someone not assigned: title and description are blanked
+    is_hidden: bool = False
     status: TaskStatus
     assignee_ids: list[uuid.UUID]
     recurring_task_id: Optional[uuid.UUID] = None
@@ -84,6 +102,13 @@ class RecurringTaskRead(BaseModel):
     warn_days: int
     notify_expiring: bool
     notify_expired: bool
+    notify_expiring_whatsapp: bool = False
+    notify_expiring_email: bool = False
+    notify_expiring_groups: bool = False
+    notify_expired_whatsapp: bool = False
+    notify_expired_email: bool = False
+    notify_expired_groups: bool = False
+    is_private: bool = False
     wait_for_previous: bool
     assign_mode: str
     assignee_ids: list[uuid.UUID]

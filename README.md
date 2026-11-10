@@ -4,13 +4,13 @@ Household finance: people in a household add shared costs, and Ibis shows each m
 totals per category and the fewest transfers needed to settle who owes whom.
 
 Same architecture as Qdra: FastAPI + SQLAlchemy + Alembic backend, React/Vite frontend
-served by nginx, PostgreSQL. No queue or worker is needed.
+served by nginx, PostgreSQL. An optional WhatsApp service (`whatsapp/`, Node + Baileys) sends task reminders.
 
 ## Project structure
 
 ```
 ibis/
-├── docker-compose.yml            # Local dev: frontend (hot reload), API, Postgres
+├── docker-compose.yml            # Local dev: frontend (hot reload), API, Postgres, WhatsApp service
 ├── docker-compose.prod-local.yml # Production-like build on your machine
 ├── Makefile
 ├── docs/                         # Domain rules, Railway deploy, repo notes
@@ -20,6 +20,7 @@ ibis/
 │       ├── api/                  # Typed API client
 │       ├── pages/                # Home, Costs, Add/Edit cost, Tasks, Settings, Account, Admin
 │       └── components/           # Split table, category chart, cost list...
+├── whatsapp/                     # WhatsApp service (Node 20+, Baileys): one linked number per household
 └── backend/
     ├── Dockerfile.api            # Runs migrations on startup if RUN_MIGRATIONS_ON_STARTUP=true
     └── ibis/
@@ -97,7 +98,7 @@ make fe-build fe-tests   # frontend typecheck/build + unit tests
 | `/h/:householdId/costs/:costId` | Edit/delete a cost |
 | `/h/:householdId/tasks` | Household tasks (red overdue, yellow expiring, green done) with filters. `?task=<id>` opens one |
 | `/h/:householdId/tasks/recurring` | Managers and residents: recurring task definitions |
-| `/h/:householdId/settings` | Managers: members, categories, descriptions, starting state, months, task categories and locations |
+| `/h/:householdId/settings` | Managers. Tabs: General, Members, WhatsApp, Email (soon), Expenses (categories, descriptions, fixed costs, months), Tasks (categories, locations) |
 | `/account` | Your name, payment info (transfer number, QR code), WhatsApp, email, password |
 | `/admin` | App admin: households and accounts |
 

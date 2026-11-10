@@ -24,8 +24,21 @@ services:
       CORS_ORIGINS: http://localhost:8080
       JWT_SECRET_KEY: local-production-test-secret-change-me
       RUN_MIGRATIONS_ON_STARTUP: "true"
+      WHATSAPP_SERVICE_URL: http://whatsapp:3001
+      WHATSAPP_SERVICE_TOKEN: local-production-whatsapp-token
     depends_on:
       - postgres
+      - whatsapp
+
+  # WhatsApp (Baileys). Its login data lives in the volume; delete the volume to unlink everything.
+  whatsapp:
+    build:
+      context: ./whatsapp
+    environment:
+      WHATSAPP_SERVICE_TOKEN: local-production-whatsapp-token
+      BAILEYS_LOG_LEVEL: warn
+    volumes:
+      - whatsapp_prod_local_data:/data
 
   postgres:
     image: postgres:16
@@ -40,3 +53,4 @@ services:
 
 volumes:
   postgres_prod_local_data:
+  whatsapp_prod_local_data:

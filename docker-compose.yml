@@ -31,8 +31,21 @@ services:
       DATABASE_URL: postgresql://ibis:ibis@postgres:5432/ibis
       CORS_ORIGINS: http://localhost:3000
       RUN_MIGRATIONS_ON_STARTUP: "true"
+      WHATSAPP_SERVICE_URL: http://whatsapp:3001
+      WHATSAPP_SERVICE_TOKEN: local-dev-whatsapp-token
     depends_on:
       - postgres
+      - whatsapp
+
+  # WhatsApp (Baileys). Its login data lives in the volume; delete the volume to unlink everything.
+  whatsapp:
+    build:
+      context: ./whatsapp
+    environment:
+      WHATSAPP_SERVICE_TOKEN: local-dev-whatsapp-token
+      BAILEYS_LOG_LEVEL: warn
+    volumes:
+      - whatsapp_data:/data
 
   postgres:
     image: postgres:16
@@ -48,3 +61,4 @@ services:
 
 volumes:
   postgres_data:
+  whatsapp_data:

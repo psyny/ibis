@@ -5,7 +5,7 @@ import { completeTask, deleteTask, getTask, listTaskLabels, listTasks } from '..
 import type { Member, Task, TaskLabel } from '../api/types';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ActionsMenu } from '../components/ActionsMenu';
-import { TaskActionsIcon, TrashIcon } from '../components/icons';
+import { LockIcon, TaskActionsIcon, TrashIcon } from '../components/icons';
 import { TaskModal } from '../components/TaskModal';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
@@ -261,7 +261,12 @@ export function TasksPage() {
                       <span className="task-card__check task-card__check--placeholder" aria-hidden />
                     )}
                     <button className="task-card__main" onClick={() => openTask(task)}>
-                      <span className="task-card__title">
+                      <span className={`task-card__title${task.is_hidden ? ' task-card__title--hidden' : ''}`}>
+                        {task.is_private && (
+                          <span className="task-card__lock" title={t('task.private')}>
+                            <LockIcon size={14} />
+                          </span>
+                        )}
                         {title}
                         {task.category_name && <span className="tag task-card__category">{task.category_name}</span>}
                       </span>

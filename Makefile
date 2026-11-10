@@ -1,6 +1,6 @@
 .PHONY: help up down build logs logs-api ps clean restart-soft restart-hard db-reset
 .PHONY: prod-local-up prod-local-down prod-local-clean
-.PHONY: be-venv be-install be-tests be-tests-postgres be-migration fe-install fe-build fe-tests
+.PHONY: be-venv be-install be-tests be-tests-postgres be-migration fe-install fe-build fe-tests wa-install wa-tests
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -104,3 +104,13 @@ fe-build: ## Typecheck and build the frontend
 
 fe-tests: ## Run frontend unit tests
 	cd frontend && npx vitest run
+
+# ============================================================================
+# WhatsApp service (Node 20+)
+# ============================================================================
+
+wa-install: ## Install WhatsApp service dependencies
+	cd whatsapp && npm install
+
+wa-tests: ## Run WhatsApp service tests (HTTP layer, no WhatsApp needed)
+	cd whatsapp && npm test

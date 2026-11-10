@@ -1,6 +1,6 @@
 # Deploying on Railway
 
-Same setup as Qdra: three services in one Railway project.
+Same setup as Qdra: three services in one Railway project, plus an optional fourth for WhatsApp.
 
 ## 1. Postgres
 Add a **PostgreSQL** database. Railway exposes `DATABASE_URL` (a `postgres://` URL is fine).
@@ -25,6 +25,26 @@ Health check path: `/health`.
 - Variable (used at build time): `VITE_API_URL=https://<your-api>.up.railway.app`
 - nginx serves the built app and falls back to `index.html`, so links like
   `/h/<id>/add` work when shared.
+
+## 4. WhatsApp service (optional)
+- Source: this repo, **Root directory** `whatsapp`, Dockerfile `Dockerfile`.
+- Add a **volume** mounted at `/data` (the linked numbers' login data; without it every deploy unlinks them).
+- No public domain needed: the API reaches it on Railway's private network.
+- Variables:
+
+```
+WHATSAPP_SERVICE_TOKEN=<long random string, at least 16 characters>
+PORT=3001
+```
+
+Then on the **Backend API** add:
+
+```
+WHATSAPP_SERVICE_URL=http://<whatsapp-service-name>.railway.internal:3001
+WHATSAPP_SERVICE_TOKEN=<the same token>
+```
+
+Managers then link a number in Settings → WhatsApp. Without these variables WhatsApp is simply off.
 
 ## First run
 Open the frontend and sign in with the login/password you want for the admin: the first

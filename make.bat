@@ -27,6 +27,8 @@ if /i "%TARGET%"=="be-migration"      goto :be_migration
 if /i "%TARGET%"=="fe-install"        goto :fe_install
 if /i "%TARGET%"=="fe-build"          goto :fe_build
 if /i "%TARGET%"=="fe-tests"          goto :fe_tests
+if /i "%TARGET%"=="wa-install"        goto :wa_install
+if /i "%TARGET%"=="wa-tests"          goto :wa_tests
 
 echo Unknown target: %TARGET%
 echo.
@@ -38,7 +40,7 @@ echo Docker (local app: Postgres + API + frontend)
 echo   make.bat up [--no-browser]    -^> build and start, wait until ready, open http://localhost:3000
 echo   make.bat down                 -^> stop (data is kept)
 echo   make.bat status               -^> show running containers
-echo   make.bat logs [service]       -^> follow logs (backend-api, frontend, postgres)
+echo   make.bat logs [service]       -^> follow logs (backend-api, frontend, postgres, whatsapp)
 echo   make.bat reset-db             -^> delete ALL local data (asks to type RESET)
 echo   make.bat prod-local           -^> production-like build on http://localhost:8080
 echo   make.bat prod-local-down      -^> stop the production-like build
@@ -51,6 +53,9 @@ echo Frontend
 echo   make.bat fe-install           -^> npm install
 echo   make.bat fe-build             -^> typecheck and build
 echo   make.bat fe-tests             -^> unit tests
+echo WhatsApp service (Node 20+)
+echo   make.bat wa-install           -^> npm install
+echo   make.bat wa-tests             -^> HTTP layer tests (no WhatsApp needed)
 echo.
 echo The first sign-in on an empty database creates the admin account.
 exit /b 0
@@ -178,6 +183,22 @@ exit /b %RESULT%
 :fe_tests
 pushd frontend
 call npx vitest run
+set "RESULT=%ERRORLEVEL%"
+popd
+exit /b %RESULT%
+
+rem ---- WhatsApp service ----
+
+:wa_install
+pushd whatsapp
+call npm install
+set "RESULT=%ERRORLEVEL%"
+popd
+exit /b %RESULT%
+
+:wa_tests
+pushd whatsapp
+call npm test
 set "RESULT=%ERRORLEVEL%"
 popd
 exit /b %RESULT%

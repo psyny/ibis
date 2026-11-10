@@ -8,7 +8,7 @@ from domain.months import today_in
 from domain.roles import MIN_ROLE_ADD_TASK
 from domain.task_labels import KIND_CATEGORY, KIND_LOCATION
 from domain.tasks import latest_occurrence, next_occurrence
-from models.task import ASSIGN_SELECTED, RecurringTask
+from models.task import ASSIGN_SELECTED, SHARED_FLAGS, RecurringTask
 from schemas.task_schemas import RecurringTaskCreate, RecurringTaskRead
 from services.context import HouseholdContext
 from services.errors import NotFoundError
@@ -29,8 +29,7 @@ def recurring_task_to_read(item: RecurringTask, today: date) -> RecurringTaskRea
         unit=item.unit,
         due_offset_days=item.due_offset_days,
         warn_days=item.warn_days,
-        notify_expiring=item.notify_expiring,
-        notify_expired=item.notify_expired,
+        **{flag: getattr(item, flag) for flag in SHARED_FLAGS},
         wait_for_previous=item.wait_for_previous,
         assign_mode=item.assign_mode,
         assignee_ids=[m.id for m in sort_members(item.assignees)],
@@ -104,8 +103,8 @@ class RecurringTaskService:
         item.unit = data.unit
         item.due_offset_days = data.due_offset_days
         item.warn_days = data.warn_days
-        item.notify_expiring = data.notify_expiring
-        item.notify_expired = data.notify_expired
+        for flag in SHARED_FLAGS:
+            setattr(item, flag, getattr(data, flag))
         item.wait_for_previous = data.wait_for_previous
         item.assign_mode = data.assign_mode
         item.is_active = data.is_active

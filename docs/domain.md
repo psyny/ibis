@@ -101,7 +101,7 @@ Household to-dos (`/h/<id>/tasks`). A task has a title, an optional description,
 0+ assignees (managers, residents, guests; never viewers), an optional **category** and **location**, and
 its own **expiring** setting: how many days before the due date it turns yellow (default 3).
 
-- Categories and locations are **lists each household edits** (Settings → Tasks, managers). New households
+- Categories and locations are **lists each household edits** (Settings → Tasks → Categories / Locations, managers). New households
   start with defaults in their language (`domain/task_labels.py`): categories Cleaning, Maintenance,
   Repair, Improvement, Bills, Shopping, Pets, Other; locations Whole house, Living room, Kitchen, Bedroom,
   Bathroom, Laundry, Office, Garage, Garden. Managers can rename or delete any of them; deleting one
@@ -115,8 +115,14 @@ its own **expiring** setting: how many days before the due date it turns yellow 
   only tasks due this month.
   The task menu (top right) has Add task and Recurring tasks.
 - One completion completes the task for everyone assigned (it records who did it).
-- **Notify assignees when** (per task, both off by default): it starts expiring, and/or it is past due.
-  Each note is sent once; changing the due date or the expiring days lets them go out again.
+- **Notify** (per task, all off by default), for two events: it starts expiring, and it is past due.
+  For each event, any of: **in the app** (a note to the assignees), **WhatsApp to the assignees** (their own
+  number), **WhatsApp to the household groups**, **email to the assignees** (stored, not sent yet: email isn't
+  built). Each event goes out once; changing the due date or the expiring days lets it go out again.
+- **Private** (per task): only the assignees see the title and description. Everyone else who can see the
+  task sees "Private task" with no description, and can't edit it (managers can still delete it). Group
+  WhatsApp messages about a private task say "a private task" instead of the title; messages to the
+  assignees themselves show it. Recurring tasks copy both settings into each task they create.
 - **Month closed** (by a manager or auto-close): everyone who has to pay gets a task per transfer
   (`kind = month_payment`, category Bills if the household still has it, due 3 days after the close) and a note linking to it. The task's "Open payment"
   button opens that month's payment sheet. Reopening the month removes the payment tasks not done yet
@@ -155,8 +161,34 @@ deleted (soft: `deleted_at`, shown in the Deleted tab, can be restored). To-dos 
 
 Code: `backend/ibis/services/notification_service.py`, `frontend/src/utils/notifications.ts`.
 
+## WhatsApp
+
+Sent through a separate service (`whatsapp/`, Node + [Baileys](https://github.com/WhiskeySockets/Baileys)),
+which links a number the way WhatsApp Web does (QR code). It is **unofficial**: use a dedicated number,
+since WhatsApp can block numbers it sees as automated.
+
+- **Settings → WhatsApp** (managers): link the household's number (scan the QR code), unlink it, pick the
+  **household groups**, send test messages, and see the latest messages and their status.
+- Each household links its own number (service session id = household id).
+- **Household groups** are stored by WhatsApp group id (`...@g.us`), picked from the groups the linked number
+  is in. Names can change or repeat; the id doesn't, so renaming a group breaks nothing (the saved name is
+  refreshed when the list is opened). A group can be paused. Tasks asking for "household groups" go to all
+  active ones; the message lists the assignees.
+- **Individuals** use the number in each person's profile (`users.whatsapp`). Numbers typed without a
+  country code get the household's (only BRL households for now: `+55`); the service then asks WhatsApp
+  for the right id, which also handles Brazilian numbers with or without the extra 9.
+- Messages are written in the household's language (`domain/messages.py`).
+- **Delivery**: producers only queue rows in `outgoing_messages`; a loop in the API process sends them every
+  `WHATSAPP_SEND_INTERVAL_SECONDS` (20), so a slow or offline WhatsApp never slows a request. Failures are
+  retried after 1 min, 5 min, 30 min and 2 h, then marked failed; a bad number or unknown group fails at
+  once. Without `WHATSAPP_SERVICE_URL` nothing is queued and Settings → WhatsApp says it's off.
+
+Code: `backend/ibis/services/messaging_service.py`, `whatsapp_service.py`, `infrastructure/whatsapp.py`,
+`whatsapp/src/`.
+
 ## Future integrations (not built yet)
 
-- WhatsApp: `users.whatsapp` is stored per person, so an incoming message can be mapped to a user;
-  the bot would call the same services as the API.
+- Email: tasks already store the email flags; `MessagingService._queue_email` is the place to fill in.
+- Incoming WhatsApp messages: `users.whatsapp` maps a sender to a user; a bot would call the same services
+  as the API.
 - Voice / AI cost entry: parse the description into a `CostCreate` and call `CostService.create`.

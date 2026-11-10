@@ -27,3 +27,9 @@ class ConflictError(DomainError):
 
 class ValidationError(DomainError):
     status_code = 422
+
+
+class ServiceUnavailableError(DomainError):
+    """An outside service Ibis depends on (e.g. WhatsApp) is not set up or not reachable."""
+
+    status_code = 503

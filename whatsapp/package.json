@@ -1,0 +1,20 @@
+{
+  "name": "ibis-whatsapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ibis WhatsApp service: one Baileys session per household, behind a small authenticated HTTP API",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^10.4.0",
+    "qrcode": "^1.5.4"
+  }
+}

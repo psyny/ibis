@@ -231,6 +231,15 @@ export interface TaskSettings {
   warn_days: number;
   notify_expiring: boolean;
   notify_expired: boolean;
+  /** Outside the app: assignees on WhatsApp / email (email not built yet), household WhatsApp groups */
+  notify_expiring_whatsapp: boolean;
+  notify_expiring_email: boolean;
+  notify_expiring_groups: boolean;
+  notify_expired_whatsapp: boolean;
+  notify_expired_email: boolean;
+  notify_expired_groups: boolean;
+  /** Only the assignees see the title and description */
+  is_private: boolean;
   assignee_ids: string[];
 }
 
@@ -252,6 +261,8 @@ export interface Task extends TaskSettings {
   can_edit: boolean;
   can_delete: boolean;
   can_complete: boolean;
+  /** A private task you aren't assigned to: title and description are blank */
+  is_hidden: boolean;
 }
 
 export interface TaskInput extends TaskSettings {
@@ -277,4 +288,44 @@ export interface RecurringTask extends RecurringTaskInput {
   id: string;
   last_occurrence_date: string | null;
   next_date: string | null;
+}
+
+/** off: no WhatsApp service on this server; unavailable: it can't be reached; qr: waiting for the scan */
+export type WhatsAppConnection = 'off' | 'unavailable' | 'disconnected' | 'connecting' | 'qr' | 'connected';
+
+export interface WhatsAppStatus {
+  status: WhatsAppConnection;
+  /** data URL of the QR code to scan */
+  qr: string | null;
+  phone: string | null;
+  name: string | null;
+  error: string | null;
+}
+
+/** A group the household's linked number is in */
+export interface AvailableWhatsAppGroup {
+  jid: string;
+  name: string;
+  participants: number;
+  added: boolean;
+}
+
+/** One of the household's WhatsApp groups ("Household groups") */
+export interface WhatsAppGroup {
+  id: string;
+  jid: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface OutgoingMessage {
+  id: string;
+  channel: 'whatsapp' | 'email';
+  recipient_label: string;
+  text: string;
+  status: 'pending' | 'sent' | 'failed';
+  attempts: number;
+  last_error: string | null;
+  sent_at: string | null;
+  created_at: string;
 }

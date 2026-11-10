@@ -36,6 +36,17 @@ ASSIGN_EVERYONE = "everyone"  # active managers and residents at that moment
 ASSIGN_EVERYONE_GUESTS = "everyone_guests"  # ...plus active guests
 ASSIGN_MODES = (ASSIGN_SELECTED, ASSIGN_EVERYONE, ASSIGN_EVERYONE_GUESTS)
 
+# Task settings copied between schemas, recurring definitions and their copies (besides title etc.)
+NOTIFY_CHANNEL_FLAGS = (
+    "notify_expiring_whatsapp",
+    "notify_expiring_email",
+    "notify_expiring_groups",
+    "notify_expired_whatsapp",
+    "notify_expired_email",
+    "notify_expired_groups",
+)
+SHARED_FLAGS = ("notify_expiring", "notify_expired", *NOTIFY_CHANNEL_FLAGS, "is_private")
+
 task_assignees = _member_link_table("task_assignees", "tasks", "task_id")
 recurring_task_assignees = _member_link_table("recurring_task_assignees", "recurring_tasks", "recurring_task_id")
 
@@ -67,6 +78,19 @@ class _TaskSettings:
     warn_days: Mapped[int] = mapped_column(Integer, nullable=False, default=DEFAULT_WARN_DAYS, server_default="3")
     notify_expiring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
     notify_expired: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    # Notify outside the app (see NOTIFY_CHANNEL_FLAGS): assignees on WhatsApp / email, household WhatsApp groups
+    notify_expiring_whatsapp: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    notify_expiring_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    notify_expiring_groups: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    notify_expired_whatsapp: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    notify_expired_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    notify_expired_groups: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+    # Only the assignees see the title and description
+    is_private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=sa_false())
+
+    def notify_any(self, event: str) -> bool:
+        """True if anything (in-app or another channel) should go out for "expiring" / "expired"."""
+        return any(getattr(self, f"notify_{event}{suffix}") for suffix in ("", "_whatsapp", "_email", "_groups"))
 
 
 class Task(_TaskSettings, Base):

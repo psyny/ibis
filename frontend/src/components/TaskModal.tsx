@@ -9,7 +9,7 @@ import { monthPaymentData, notificationsChanged, paymentLink } from '../utils/no
 import { dueText, taskDescription, taskTitle } from '../utils/tasks';
 import { Modal } from './Modal';
 import { PersonChips } from './PersonChips';
-import { LabelChips, TaskSettingsFields, TaskSettingsValue } from './TaskSettingsFields';
+import { LabelChips, notifySummary, TaskSettingsFields, TaskSettingsValue, taskSettingsOf } from './TaskSettingsFields';
 
 interface Props {
   householdId: string;
@@ -77,7 +77,7 @@ function TaskDetails({ householdId, task, members, today, onClose, onEdit, onCha
   const description = taskDescription(task, t);
   const payment = monthPaymentData(task.kind, task.data);
   const done = task.status === 'completed';
-  const notify = [task.notify_expiring && t('task.notifyExpiring'), task.notify_expired && t('task.notifyExpired')].filter(Boolean);
+  const notify = notifySummary(task, t);
 
   const toggle = async () => {
     setBusy(true);
@@ -123,7 +123,15 @@ function TaskDetails({ householdId, task, members, today, onClose, onEdit, onCha
         <dt>{t('task.warnDays')}</dt>
         <dd>{tn('task.warnDaysValue', task.warn_days)}</dd>
         <dt>{t('task.notifications')}</dt>
-        <dd>{notify.length ? notify.join(', ') : t('task.notifyOff')}</dd>
+        <dd>
+          {notify.length ? notify.map((line) => <div key={line}>{line}</div>) : t('task.notifyOff')}
+        </dd>
+        {task.is_private && (
+          <>
+            <dt>{t('task.private')}</dt>
+            <dd>{t('task.privateHint')}</dd>
+          </>
+        )}
       </dl>
       {payment && (
         <Link to={paymentLink(householdId, payment)} className="button button--secondary button--block">
@@ -169,11 +177,7 @@ function TaskForm({ householdId, task, members, labels, onCancel, onSaved }: For
   const [description, setDescription] = useState(task?.description || '');
   const [dueDate, setDueDate] = useState(task?.due_date || '');
   const [assignees, setAssignees] = useState<string[]>(task?.assignee_ids || []);
-  const [settings, setSettings] = useState<TaskSettingsValue>({
-    warn_days: task?.warn_days ?? 3,
-    notify_expiring: task?.notify_expiring ?? false,
-    notify_expired: task?.notify_expired ?? false,
-  });
+  const [settings, setSettings] = useState<TaskSettingsValue>(taskSettingsOf(task));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 

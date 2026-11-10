@@ -409,3 +409,47 @@
   padding: 0;
   cursor: pointer;
 }
+
+/* ---------- Notify options and private tasks ---------- */
+.notify-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+.notify-group__title {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Two columns from tablet width, one on phones */
+.notify-group__options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 16px;
+}
+
+@media (min-width: 640px) {
+  .notify-group__options {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.notify-group .checkbox {
+  min-height: 32px;
+}
+
+.task-card__lock {
+  display: inline-flex;
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: var(--text-muted);
+}
+
+.task-card__title--hidden {
+  font-style: italic;
+  color: var(--text-secondary);
+}

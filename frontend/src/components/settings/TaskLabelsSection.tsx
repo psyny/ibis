@@ -4,8 +4,8 @@ import type { TaskLabel } from '../../api/types';
 import { useMessage } from '../../contexts/MessageContext';
 import { useI18n } from '../../i18n';
 
-/** Managers: the household's task categories and locations (they start with a default list). */
-export function TaskLabelsSection({ householdId }: { householdId: string }) {
+/** Managers: the household's task categories or locations (they start with a default list). */
+export function TaskLabelsSection({ householdId, kind }: { householdId: string; kind: TaskLabel['kind'] }) {
   const [labels, setLabels] = useState<TaskLabel[] | null>(null);
   const showMessage = useMessage();
 
@@ -16,12 +16,7 @@ export function TaskLabelsSection({ householdId }: { householdId: string }) {
   }, [householdId, showMessage]);
   useEffect(load, [load]);
 
-  return (
-    <>
-      <LabelList householdId={householdId} kind="category" labels={labels} onChanged={load} />
-      <LabelList householdId={householdId} kind="location" labels={labels} onChanged={load} />
-    </>
-  );
+  return <LabelList householdId={householdId} kind={kind} labels={labels} onChanged={load} />;
 }
 
 interface ListProps {

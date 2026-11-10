@@ -6,7 +6,7 @@ import type { AssignMode, FrequencyUnit, Member, RecurringTask, RecurringTaskInp
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Modal } from '../components/Modal';
 import { PersonChips } from '../components/PersonChips';
-import { LabelChips, TaskSettingsFields, TaskSettingsValue } from '../components/TaskSettingsFields';
+import { LabelChips, TaskSettingsFields, TaskSettingsValue, taskSettingsOf } from '../components/TaskSettingsFields';
 import { TopBar } from '../components/TopBar';
 import { useMessage } from '../contexts/MessageContext';
 import { useHousehold } from '../hooks/useHousehold';
@@ -174,11 +174,7 @@ function RecurringTaskModal({ householdId, item, members, labels, today, onClose
   const [dueLater, setDueLater] = useState((item?.due_offset_days || 0) > 0);
   const [assignMode, setAssignMode] = useState<AssignMode>((item?.assign_mode as AssignMode) || 'everyone');
   const [assignees, setAssignees] = useState<string[]>(item?.assignee_ids || []);
-  const [settings, setSettings] = useState<TaskSettingsValue>({
-    warn_days: item?.warn_days ?? 3,
-    notify_expiring: item?.notify_expiring ?? false,
-    notify_expired: item?.notify_expired ?? false,
-  });
+  const [settings, setSettings] = useState<TaskSettingsValue>(taskSettingsOf(item));
   const [waitForPrevious, setWaitForPrevious] = useState(item?.wait_for_previous ?? true);
   const [active, setActive] = useState(item?.is_active ?? true);
   const [error, setError] = useState('');
