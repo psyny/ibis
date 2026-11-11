@@ -90,7 +90,7 @@ def test_household_groups(client, home, fake_whatsapp):
     assert client.post(f"{base}/groups", json={"jid": "not-a-group", "name": "x"}, headers=h["mia"]).status_code == 422
     assert client.get(f"{base}/available-groups", headers=h["mia"]).json()[0]["added"] is True
 
-    assert client.post(f"{base}/test", json={"group_id": group["id"]}, headers=h["mia"]).status_code == 204
+    assert client.post(f"{base}/test", json={"group_id": group["id"]}, headers=h["mia"]).status_code == 200
     assert fake_whatsapp.sent[-1][0] == GROUP_JID
 
     paused = client.put(f"{base}/groups/{group['id']}", json={"is_active": False}, headers=h["mia"]).json()
@@ -103,9 +103,33 @@ def test_test_message_to_a_member(client, home, fake_whatsapp):
     hid, people, h = home
     base = f"/api/households/{hid}/whatsapp"
     rui, gil = people["rui"]["member"]["id"], people["gil"]["member"]["id"]
-    assert client.post(f"{base}/test", json={"member_id": rui}, headers=h["mia"]).status_code == 204
-    assert fake_whatsapp.sent[-1][0] == "5511987654321"
+    response = client.post(f"{base}/test", json={"member_id": rui}, headers=h["mia"])
+    assert response.status_code == 200 and response.json() == {"payment_receiver": None}  # nobody has a PIX key
+    assert [to for to, _ in fake_whatsapp.sent] == ["5511987654321"]  # only the test message
     assert client.post(f"{base}/test", json={"member_id": gil}, headers=h["mia"]).status_code == 422  # no number
+
+
+def test_test_message_includes_a_sample_payment(client, home, fake_whatsapp):
+    hid, people, h = home
+    base = f"/api/households/{hid}/whatsapp"
+    client.put("/api/me", json={"bank_info_type": "pix", "bank_info": "mia@example.com"}, headers=h["mia"])
+    response = client.post(f"{base}/test", json={"member_id": people["rui"]["member"]["id"]}, headers=h["mia"])
+    assert response.json() == {"payment_receiver": "Mia"}
+    test, payment, code = [text for _to, text in fake_whatsapp.sent]
+    assert test.startswith("✅")
+    assert payment.startswith("🧪 Test:") and '"Pay Mia R$ 10.00"' in payment
+    assert "1) A direct transfer to the PIX key: mia@example.com" in payment
+    assert code.startswith("00020126") and "540510.00" in code  # R$ 10.00
+    assert _messages(client, hid, h["mia"]) == []  # sent right away, not queued
+
+
+def test_sample_payment_prefers_someone_else_than_the_recipient(client, home, fake_whatsapp):
+    hid, people, h = home
+    base = f"/api/households/{hid}/whatsapp"
+    client.put("/api/me", json={"bank_info_type": "pix", "bank_info": "rui@example.com"}, headers=h["rui"])
+    client.put("/api/me", json={"bank_info_type": "pix", "bank_info": "mia@example.com"}, headers=h["mia"])
+    response = client.post(f"{base}/test", json={"member_id": people["rui"]["member"]["id"]}, headers=h["mia"])
+    assert response.json() == {"payment_receiver": "Mia"}  # not Rui paying himself
 
 
 def test_expiring_task_notifies_on_whatsapp(client, home, fake_whatsapp, monkeypatch):
@@ -230,3 +254,20 @@ def test_payment_reminder_without_a_pix_key(client, home, fake_whatsapp):
     [details] = [m["text"] for m in _messages(client, hid, h["mia"]) if m["recipient_label"] == "Rui"]
     assert "1) A direct transfer: Bank 001 / 1234-5" in details
     assert "payment page" not in details and "2)" not in details  # no PIX key: no code, no page
+
+
+def test_payment_reminder_to_groups_carries_the_pix_code_too(client, home, fake_whatsapp):
+    hid, people, h = home
+    client.post(f"/api/households/{hid}/whatsapp/groups", json={"jid": GROUP_JID, "name": "Family"}, headers=h["mia"])
+    client.put("/api/me", json={"bank_info_type": "pix", "bank_info": "mia@example.com"}, headers=h["mia"])
+    body = {"payment_task": {"notify_expiring_groups": True}}  # due in 3 days: expiring at once
+    assert client.put(f"/api/households/{hid}", json=body, headers=h["mia"]).status_code == 200
+    client.post(f"/api/households/{hid}/costs", json=_cost(people, "mia", ["mia", "rui", "gil"], 90), headers=h["mia"])
+    _close(client, hid, h["mia"], today_in("UTC"))
+
+    group = [m["text"] for m in reversed(_messages(client, hid, h["mia"]))]  # oldest first
+    assert all(m["recipient_label"] == "Family" for m in _messages(client, hid, h["mia"]))
+    assert len(group) == 4  # Rui's and Gil's payments: details + code each
+    details, code = group[0], group[1]
+    assert "Assigned to:" in details and "mia@example.com" in details and "next message" in details
+    assert code.startswith("00020126") and "\n" not in code

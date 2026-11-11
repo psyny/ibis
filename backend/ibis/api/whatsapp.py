@@ -14,6 +14,7 @@ from schemas.whatsapp_schemas import (
     WhatsAppGroupUpdate,
     WhatsAppStatus,
     WhatsAppTest,
+    WhatsAppTestResult,
 )
 from services.context import HouseholdContext
 from services.whatsapp_service import WhatsAppService
@@ -67,10 +68,10 @@ def remove_group(group_id: uuid.UUID, ctx: HouseholdContext = Depends(manage), d
     WhatsAppService(db).remove_group(ctx, group_id)
 
 
-@router.post("/test", status_code=204)
+@router.post("/test", response_model=WhatsAppTestResult)
 def send_test(data: WhatsAppTest, ctx: HouseholdContext = Depends(manage), db: Session = Depends(get_db)):
-    """Send a test message now to a household group or a member."""
-    WhatsAppService(db).send_test(ctx, data)
+    """Send a test message now to a household group or a member, plus a sample payment reminder."""
+    return WhatsAppTestResult(payment_receiver=WhatsAppService(db).send_test(ctx, data))
 
 
 @router.get("/messages", response_model=list[OutgoingMessageRead])

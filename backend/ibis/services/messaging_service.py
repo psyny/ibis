@@ -10,9 +10,10 @@ from typing import Optional
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from domain.messages import MessageEvent, payment_message, task_due_message
+from domain.messages import MessageEvent, payment_message, payment_test_intro, payment_title, task_due_message
+from domain.months import today_in
 from domain.phones import default_country_for, whatsapp_number
-from domain.pix import payment_page_url
+from domain.pix import payment_details, payment_page_url
 from infrastructure import whatsapp
 from infrastructure.config.settings import settings
 from models.household import Household
@@ -32,6 +33,7 @@ log = logging.getLogger("ibis.messaging")
 # Wait this long before each retry; after the last one the message is marked failed
 RETRY_DELAYS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=30), timedelta(hours=2))
 MAX_ATTEMPTS = len(RETRY_DELAYS) + 1
+PAYMENT_EXAMPLE_AMOUNT = 10.0  # the sample payment in Settings -> WhatsApp "Send test"
 
 
 def _now() -> datetime:
@@ -65,27 +67,59 @@ class MessagingService:
             private=task.is_private and people is not None,  # only group messages hide the title
             people=people,
         )
+        payment = task.data if task.kind == KIND_MONTH_PAYMENT else None
+
+        def with_payment(text: str) -> list[str]:
+            """Payment tasks add how to pay; the copy-and-paste code goes alone in its own message
+            so it copies cleanly. Groups get it too: the household chose to send these to groups."""
+            if not payment:
+                return [text]
+            texts = [text + "\n\n" + self._payment_text(household, payment)]
+            if payment.get("pix_code"):
+                texts.append(payment["pix_code"])
+            return texts
+
         if getattr(task, f"notify_{event}_whatsapp") and whatsapp.is_configured():
             country = default_country_for(household.currency)
-            texts = [text_for()]
-            payment = task.data if task.kind == KIND_MONTH_PAYMENT else None
-            if payment:
-                # How to pay; the copy-and-paste code goes alone in its own message so it copies cleanly
-                texts[0] += "\n\n" + self._payment_text(household, payment)
-                if payment.get("pix_code"):
-                    texts.append(payment["pix_code"])
+            texts = with_payment(text_for())
             for member in assignees:
                 number = whatsapp_number(member.user.whatsapp, country)
                 if number:
                     for text in texts:
                         self.queue_whatsapp(household.id, number, member.user.display_name, text)
         if getattr(task, f"notify_{event}_groups") and whatsapp.is_configured():
-            text = text_for([m.user.display_name for m in assignees])
+            texts = with_payment(text_for([m.user.display_name for m in assignees]))
             for group in self.active_groups(household.id):
-                self.queue_whatsapp(household.id, group.jid, group.name, text)
+                for text in texts:
+                    self.queue_whatsapp(household.id, group.jid, group.name, text)
         if getattr(task, f"notify_{event}_email"):
             self._queue_email(household, task, event)
         self.db.flush()
+
+    def payment_example(self, household: Household, receiver_name: str, bank_info_type: str, bank_info: str) -> list[str]:
+        """A sample payment reminder (R$ 10 to `receiver_name`, due in 3 days), marked as a test, plus
+        its PIX code: what a payer gets when a month closes. Used by Settings -> WhatsApp "Send test"."""
+        today = today_in(household.timezone)
+        amount = PAYMENT_EXAMPLE_AMOUNT
+        data = {
+            "to_name": receiver_name,
+            "amount": amount,
+            "currency": household.currency,
+            "year": today.year,
+            "month": today.month,
+            **payment_details(bank_info_type, bank_info, receiver_name, amount, household.currency),
+        }
+        reminder = task_due_message(
+            household.language,
+            "expiring",
+            household=household.name,
+            title=payment_title(household.language, name=receiver_name, amount=amount, currency=household.currency),
+            due=today + timedelta(days=3),
+        )
+        texts = [f"{payment_test_intro(household.language)}\n\n{reminder}\n\n{self._payment_text(household, data)}"]
+        if data["pix_code"]:
+            texts.append(data["pix_code"])
+        return texts
 
     @staticmethod
     def _payment_text(household: Household, data: dict) -> str:

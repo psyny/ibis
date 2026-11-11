@@ -70,3 +70,9 @@ class OutgoingMessageRead(BaseModel):
     last_error: Optional[str] = None
     sent_at: Optional[datetime] = None
     created_at: datetime
+
+
+class WhatsAppTestResult(BaseModel):
+    """Who the sample payment reminder pays (None: nobody in the household has a usable PIX key)."""
+
+    payment_receiver: Optional[str] = None

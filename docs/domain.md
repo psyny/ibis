@@ -146,8 +146,8 @@ its own **expiring** setting: how many days before the due date it turns yellow 
     stored in the household's language (WhatsApp uses it); the app shows it in each person's language.
   - The task window lists the ways to pay: a direct transfer (key or bank info), the public payment page,
     and the copy-and-paste code, each with a copy button. Without any details it says to ask the receiver.
-  - WhatsApp reminders to the payer list the same ways, then send the code alone in a second message
-    so it copies cleanly. Group messages only get the reminder (no codes).
+  - WhatsApp reminders list the same ways, then send the code alone in a second message so it copies
+    cleanly. Household groups get them too (with "Assigned to"), when the settings send to groups.
 
 ### Recurring tasks
 
@@ -212,6 +212,9 @@ since WhatsApp can block numbers it sees as automated.
 
 - **Settings → WhatsApp** (managers): link the household's number (scan the QR code), unlink it, pick the
   **household groups**, send test messages, and see the latest messages and their status.
+  "Send test" (to a group or a person) sends right away: the test message, then a sample payment reminder
+  marked as a test (R$ 10 to the first active person with a usable PIX key, preferably not the recipient)
+  and its PIX code. If nobody has a PIX key, only the test message is sent, and the screen says so.
 - Each household links its own number (service session id = household id).
 - **Household groups** are stored by WhatsApp group id (`...@g.us`), picked from the groups the linked number
   is in. Names can change or repeat; the id doesn't, so renaming a group breaks nothing (the saved name is

@@ -16,8 +16,11 @@ export const setWhatsAppGroupActive = (hid: string, id: string, is_active: boole
 export const removeWhatsAppGroup = (hid: string, id: string) =>
   request<void>(`${base(hid)}/groups/${id}`, { method: 'DELETE' });
 
-/** Sends a test message right away to one household group or one member */
+/**
+ * Sends a test message right away to one household group or one member, plus a sample payment
+ * reminder to `payment_receiver` (null when nobody in the household has a PIX key).
+ */
 export const sendWhatsAppTest = (hid: string, target: { group_id: string } | { member_id: string }) =>
-  request<void>(`${base(hid)}/test`, { method: 'POST', body: target });
+  request<{ payment_receiver: string | null }>(`${base(hid)}/test`, { method: 'POST', body: target });
 
 export const listOutgoingMessages = (hid: string) => request<OutgoingMessage[]>(`${base(hid)}/messages`);

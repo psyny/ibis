@@ -11,6 +11,7 @@ MessageEvent = Literal["expiring", "expired"]
 # {household}, {title}, {date}; group messages also get {people}
 _TEXTS: dict[str, dict[str, str]] = {
     "en": {
+        "payment_test": "🧪 Test: this is how a payment reminder looks. No need to pay.",
         "expiring": '⏰ {household}: "{title}" is due on {date}.',
         "expired": '⚠️ {household}: "{title}" is overdue (it was due on {date}).',
         "people": "Assigned to: {people}",
@@ -19,6 +20,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis: WhatsApp messages from {household} are working.",
     },
     "pt-BR": {
+        "payment_test": "🧪 Teste: é assim que fica um lembrete de pagamento. Não precisa pagar.",
         "expiring": '⏰ {household}: "{title}" vence em {date}.',
         "expired": '⚠️ {household}: "{title}" está atrasada (venceu em {date}).',
         "people": "Responsáveis: {people}",
@@ -27,6 +29,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis: as mensagens de WhatsApp de {household} estão funcionando.",
     },
     "de": {
+        "payment_test": "🧪 Test: So sieht eine Zahlungserinnerung aus. Du musst nichts zahlen.",
         "expiring": '⏰ {household}: „{title}“ ist am {date} fällig.',
         "expired": '⚠️ {household}: „{title}“ ist überfällig (fällig am {date}).',
         "people": "Zugewiesen an: {people}",
@@ -35,6 +38,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis: WhatsApp-Nachrichten von {household} funktionieren.",
     },
     "fr": {
+        "payment_test": "🧪 Test : voici à quoi ressemble un rappel de paiement. Inutile de payer.",
         "expiring": "⏰ {household} : « {title} » est à faire pour le {date}.",
         "expired": "⚠️ {household} : « {title} » est en retard (à faire pour le {date}).",
         "people": "Assignée à : {people}",
@@ -43,6 +47,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis : les messages WhatsApp de {household} fonctionnent.",
     },
     "it": {
+        "payment_test": "🧪 Test: ecco come appare un promemoria di pagamento. Non serve pagare.",
         "expiring": '⏰ {household}: "{title}" scade il {date}.',
         "expired": '⚠️ {household}: "{title}" è in ritardo (scadeva il {date}).',
         "people": "Assegnata a: {people}",
@@ -51,6 +56,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis: i messaggi WhatsApp di {household} funzionano.",
     },
     "zh-CN": {
+        "payment_test": "🧪 测试：付款提醒就是这个样子，无需付款。",
         "expiring": "⏰ {household}：“{title}” 将于 {date} 到期。",
         "expired": "⚠️ {household}：“{title}” 已逾期（截止日期 {date}）。",
         "people": "负责人：{people}",
@@ -59,6 +65,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis：{household} 的 WhatsApp 消息运行正常。",
     },
     "ja": {
+        "payment_test": "🧪 テスト：支払いリマインダーはこのように届きます。支払う必要はありません。",
         "expiring": "⏰ {household}：「{title}」の期限は {date} です。",
         "expired": "⚠️ {household}：「{title}」は期限切れです（期限 {date}）。",
         "people": "担当：{people}",
@@ -67,6 +74,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis：{household} の WhatsApp メッセージは正常に届いています。",
     },
     "ko": {
+        "payment_test": "🧪 테스트: 결제 알림은 이렇게 보입니다. 결제하지 않아도 됩니다.",
         "expiring": '⏰ {household}: "{title}" 마감일은 {date}입니다.',
         "expired": '⚠️ {household}: "{title}" 기한이 지났습니다 (마감일 {date}).',
         "people": "담당: {people}",
@@ -75,6 +83,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "test": "✅ Ibis: {household}의 WhatsApp 메시지가 정상 작동합니다.",
     },
     "hi": {
+        "payment_test": "🧪 टेस्ट: भुगतान रिमाइंडर ऐसा दिखता है। भुगतान करने की ज़रूरत नहीं है।",
         "expiring": '⏰ {household}: "{title}" की अंतिम तिथि {date} है।',
         "expired": '⚠️ {household}: "{title}" की तिथि निकल गई ({date})।',
         "people": "ज़िम्मेदार: {people}",
@@ -127,6 +136,11 @@ def task_due_message(
 
 def test_message(language: str, household: str) -> str:
     return _texts(language)["test"].format(household=household)
+
+
+def payment_test_intro(language: str) -> str:
+    """First line of the sample payment reminder sent by "Send test", so nobody pays it."""
+    return _texts(language)["payment_test"]
 
 
 # --- Month-close payments -------------------------------------------------------------------

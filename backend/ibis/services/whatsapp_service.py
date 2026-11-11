@@ -1,5 +1,6 @@
 """Settings -> WhatsApp (managers): link the household's number, pick its groups, send a test."""
 import uuid
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from domain.messages import test_message
 from domain.phones import default_country_for, whatsapp_number
+from domain.pix import parse_pix_key
 from domain.roles import MIN_ROLE_MANAGE
 from infrastructure import whatsapp
 from models.messaging import OutgoingMessage, WhatsAppGroup
@@ -14,6 +16,7 @@ from repositories.member_repository import MemberRepository
 from schemas.whatsapp_schemas import AvailableGroup, WhatsAppGroupCreate, WhatsAppStatus, WhatsAppTest
 from services.context import HouseholdContext
 from services.errors import ConflictError, NotFoundError, ServiceUnavailableError, ValidationError
+from services.messaging_service import MessagingService
 
 RECENT_MESSAGES = 30
 
@@ -113,9 +116,15 @@ class WhatsAppService:
         return group
 
     # --- Testing and the message log ---------------------------------------------------------
-    def send_test(self, ctx: HouseholdContext, data: WhatsAppTest) -> None:
-        """Sends right away (not queued), so the manager sees at once whether it works."""
+    def send_test(self, ctx: HouseholdContext, data: WhatsAppTest) -> Optional[str]:
+        """Send right away (not queued), so the manager sees at once whether it works: the test message,
+        then a sample payment reminder (R$ 10 to someone in the household with a PIX key) and its code.
+
+        Returns the sample payment's receiver, or None when nobody has a usable PIX key (then only the
+        test message is sent).
+        """
         ctx.require(MIN_ROLE_MANAGE)
+        member = None
         if data.group_id:
             to = self._group(ctx, data.group_id).jid
         else:
@@ -125,7 +134,26 @@ class WhatsAppService:
             to = whatsapp_number(member.user.whatsapp, default_country_for(ctx.household.currency))
             if to is None:
                 raise ValidationError(f"{member.user.display_name} has no valid WhatsApp number")
-        _call(whatsapp.send, ctx.household.id, to, test_message(ctx.household.language, ctx.household.name))
+        texts = [test_message(ctx.household.language, ctx.household.name)]
+        receiver = self._pix_receiver(ctx, not_member=member)
+        if receiver:
+            user = receiver.user
+            texts += MessagingService(self.db).payment_example(
+                ctx.household, user.display_name, user.bank_info_type, user.bank_info
+            )
+        for text in texts:
+            _call(whatsapp.send, ctx.household.id, to, text)
+        return receiver.user.display_name if receiver else None
+
+    def _pix_receiver(self, ctx: HouseholdContext, not_member=None):
+        """Someone active in the household with a usable PIX key; the test's recipient only if nobody else."""
+        candidates = [
+            m
+            for m in MemberRepository(self.db).list_ordered(ctx.household.id)
+            if m.is_active and m.user.is_active and m.user.bank_info_type == "pix" and parse_pix_key(m.user.bank_info)
+        ]
+        others = [m for m in candidates if m is not not_member]
+        return (others or candidates or [None])[0]
 
     def recent_messages(self, ctx: HouseholdContext) -> list[OutgoingMessage]:
         ctx.require(MIN_ROLE_MANAGE)

@@ -20,6 +20,14 @@ import { ConfirmModal } from '../ConfirmModal';
 
 const POLL_MS = 3000;
 
+type T = ReturnType<typeof useI18n>['t'];
+
+/** Sends the test messages and returns what to tell the manager. */
+async function sendTest(hid: string, target: { group_id: string } | { member_id: string }, name: string, t: T) {
+  const { payment_receiver: receiver } = await sendWhatsAppTest(hid, target);
+  return receiver ? t('whatsapp.testSentPayment', { name, receiver }) : t('whatsapp.testSentNoPix', { name });
+}
+
 /** Managers: link a WhatsApp number to the household, pick its groups, see what was sent. */
 export function WhatsAppSection({ householdId }: { householdId: string }) {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
@@ -243,7 +251,9 @@ function GroupsCard({ householdId, connected }: { householdId: string; connected
             <button
               className="button button--ghost button--small"
               disabled={!connected}
-              onClick={() => run(() => sendWhatsAppTest(householdId, { group_id: group.id }), t('whatsapp.testSent', { name: group.name }))}
+              onClick={() =>
+                run(async () => showMessage('success', await sendTest(householdId, { group_id: group.id }, group.name, t)))
+              }
             >
               {t('whatsapp.test')}
             </button>
@@ -304,8 +314,7 @@ function IndividualsCard({ householdId, connected }: { householdId: string; conn
 
   const test = async (member: Member) => {
     try {
-      await sendWhatsAppTest(householdId, { member_id: member.id });
-      showMessage('success', t('whatsapp.testSent', { name: member.display_name }));
+      showMessage('success', await sendTest(householdId, { member_id: member.id }, member.display_name, t));
     } catch (e) {
       showMessage('error', (e as Error).message);
     }
