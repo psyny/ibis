@@ -9,13 +9,11 @@ interface Props {
   onSaved: () => void;
 }
 
+/** Settings -> General: name, currency, timezone, language. Expense rules live under Expenses. */
 export function GeneralSection({ household, onSaved }: Props) {
   const [name, setName] = useState(household.name);
   const [currency, setCurrency] = useState(household.currency);
   const [timezone, setTimezone] = useState(household.timezone);
-  const [autoClose, setAutoClose] = useState(household.auto_close_days !== null);
-  const [days, setDays] = useState(String(household.auto_close_days ?? 5));
-  const [shield, setShield] = useState(household.shield_costs_from_guests);
   const [language, setLanguage] = useState<LanguageCode>(household.language as LanguageCode);
   const [saving, setSaving] = useState(false);
   const showMessage = useMessage();
@@ -34,9 +32,7 @@ export function GeneralSection({ household, onSaved }: Props) {
         name,
         currency: currency.toUpperCase(),
         timezone,
-        shield_costs_from_guests: shield,
         language,
-        ...(autoClose ? { auto_close_days: Math.max(0, Number(days) || 0) } : { disable_auto_close: true }),
       });
       showMessage('success', t('general.saved'));
       onSaved();
@@ -97,38 +93,6 @@ export function GeneralSection({ household, onSaved }: Props) {
           ))}
         </select>
         <span className="form-hint">{t('general.languageHint')}</span>
-      </div>
-      <div className="form-field">
-        <span className="form-label">{t('general.autoClose')}</span>
-        <label className="checkbox">
-          <input type="checkbox" checked={autoClose} onChange={(e) => setAutoClose(e.target.checked)} />
-          {t('general.autoCloseCheckbox')}
-        </label>
-        {autoClose && (
-          <div className="row" style={{ marginTop: 8 }}>
-            <input
-              className="form-input"
-              style={{ width: 90 }}
-              type="number"
-              min={0}
-              max={365}
-              inputMode="numeric"
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-            />
-            <span className="muted">{t('general.daysAfterEnd')}</span>
-          </div>
-        )}
-      </div>
-      <div className="form-field">
-        <span className="form-label">{t('general.privacy')}</span>
-        <label className="checkbox">
-          <input type="checkbox" checked={shield} onChange={(e) => setShield(e.target.checked)} />
-          {t('general.shield')}
-        </label>
-        <span className="form-hint">
-          {t('general.shieldHint')}
-        </span>
       </div>
       <button className="button button--primary" disabled={saving}>
         {saving ? t('common.saving') : t('common.save')}

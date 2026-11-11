@@ -1,7 +1,9 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import type { Household } from '../api/types';
+import { AutoCloseSection } from '../components/settings/AutoCloseSection';
 import { CategoriesSection, PresetsSection } from '../components/settings/CatalogSection';
 import { EmailSection } from '../components/settings/EmailSection';
+import { ExpensesGeneralSection } from '../components/settings/ExpensesGeneralSection';
 import { GeneralSection } from '../components/settings/GeneralSection';
 import { MembersSection } from '../components/settings/MembersSection';
 import { MonthsSection } from '../components/settings/MonthsSection';
@@ -29,6 +31,7 @@ const TABS: Tab[] = [
     id: 'expenses',
     label: 'settings.tab.expenses',
     subs: [
+      { id: 'general', label: 'settings.tab.general' },
       { id: 'categories', label: 'settings.tab.categories' },
       { id: 'descriptions', label: 'settings.tab.descriptions' },
       { id: 'fixed', label: 'settings.tab.fixedCosts' },
@@ -63,6 +66,8 @@ function SectionContent({ household, tab, sub, reload }: { household: Household;
       return <WhatsAppSection householdId={hid} />;
     case 'email/':
       return <EmailSection />;
+    case 'expenses/general':
+      return <ExpensesGeneralSection key={hid} household={household} onSaved={reload} />;
     case 'expenses/categories':
       return <CategoriesSection householdId={hid} />;
     case 'expenses/descriptions':
@@ -72,7 +77,12 @@ function SectionContent({ household, tab, sub, reload }: { household: Household;
     case 'expenses/months':
       return <MonthsSection householdId={hid} currency={household.currency} />;
     case 'expenses/closing':
-      return <PaymentTaskSection key={hid} household={household} onSaved={reload} />;
+      return (
+        <>
+          <AutoCloseSection key={`auto-${hid}`} household={household} onSaved={reload} />
+          <PaymentTaskSection key={`pay-${hid}`} household={household} onSaved={reload} />
+        </>
+      );
     case 'tasks/categories':
       return <TaskLabelsSection householdId={hid} kind="category" />;
     case 'tasks/locations':

@@ -15,7 +15,7 @@
 
 The whole policy is in `backend/ibis/domain/roles.py` (`MIN_ROLE_ADD_COST`, `PARTICIPANT_ROLES`, ...).
 
-- **Shield costs from guests** (household option, Settings → General): guests then see only the costs
+- **Shield costs from guests** (household option, Settings → Expenses → General): guests then see only the costs
   they paid, cover or added, only transfers they are part of, their own balance, and no category
   breakdown. Totals and month counts only include those costs, and other costs can't be opened by link.
   Their split is still computed from all costs, so their amounts are correct. Enforced in the API
@@ -88,7 +88,7 @@ should call `CostService.create(ctx, data, source="whatsapp")` so they reuse the
   cost with the same description (case/space-insensitive) and amount, so clicking twice adds nothing; the
   month row is locked while adding, so even simultaneous clicks can't duplicate. Costs already in the month
   are never removed, even if their fixed cost was changed or deleted.
-- **Closing**: managers close/reopen months. With auto-close set to N days, a month closes N days
+- **Closing**: managers close/reopen months. With auto-close (Settings → Expenses → Month close) set to N days, a month closes N days
   after it ends. A month a manager reopened is not auto-closed again.
 - The household timezone decides when a new month starts.
 
